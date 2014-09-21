@@ -37,11 +37,14 @@ class Graph {
     public:
 
     void insert(int x, int y);
-    void connect(int id1, int id2);
+    void insert(int x, int y);
+    void connect(Node node1, Node node2);
 
     const std::vector<Node>& getNodes();
 
-    const std::vector<Node> shortestPath(int id1, int id2); // Returns a vector with the path to take in order
+    const std::vector<Node> shortestPath(int id1, int id2); // Returns a vector with the path to take in orders
+
+    bool isVisible (Node node1, Node node2, const Graph& obstacle);
 
 
 };
