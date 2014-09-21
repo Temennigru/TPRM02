@@ -40,7 +40,9 @@ class Graph {
     void insert(int x, int y);
     void connect(Node node1, Node node2);
 
-    const std::vector<Node>& getNodes();
+    Node begin();
+    Node next(Node n);
+    Node end();
 
     const std::vector<Node> shortestPath(int id1, int id2); // Returns a vector with the path to take in orders
 
