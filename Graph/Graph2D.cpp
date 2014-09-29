@@ -4,9 +4,46 @@
 #include <vector>
 #include <list>
 #include <set>
+#include <queue>
 #include "Graph2D.h"
 
 namespace graph2D{
+
+    typedef node_t* node_t_ptr;
+
+    class nodeGreater : public std::binary_function<std::pair<node_t_ptr, int>, std::pair<node_t_ptr, int>, bool> {
+        bool operator() (const std::pair<node_t_ptr, int>& x, const std::pair<node_t_ptr, int>& y) const {return x.first->cost > y.first->cost;;}
+    };
+
+    class Frontier {
+    public:
+        virtual std::pair<node_t_ptr, int> pop () = 0;
+        virtual void push(std::pair<node_t_ptr, int>) = 0;
+        virtual bool empty() = 0;
+    };
+
+    class AStarFrontier : public Frontier {
+    private:
+        std::priority_queue<
+            std::pair<node_t_ptr, int>,
+            std::deque<std::pair<node_t_ptr, int> >,
+            nodeGreater> frontier;
+
+    public:
+        std::pair<node_t_ptr, int> pop () {
+            std::pair<node_t_ptr, int> aux = this->frontier.top();
+            this->frontier.pop();
+            return aux;
+        }
+
+        void push(std::pair<node_t_ptr, int> data) {
+            this->frontier.push(data);
+        }
+
+        bool empty() {
+            return this->frontier.empty();
+        }
+    };
 
 	double sqdistance(node_t * a, node_t * b){
 		return (a->x - b->x)*(a->x - b->x) + (a->y - b->y)*(a->y - b->y);
@@ -27,52 +64,42 @@ namespace graph2D{
 		for each (auto child in adjCopy) removeEdge(n, child);
 	}
 
-	// Recursively visits the nodes in the graph;
-	void recurse(node_t * node, std::function<node_t*(node_t*)> visitor){
-		while (node) node = visitor(node);
-	}
-
 	// Generic solution template using a frontier
 	template<typename frontier_t>void solve(
 		node_t * src, // The starting point of the search
-		node_t * dst, // The end point of the search
-		std::function<void(frontier_t*, node_t *)> insert,  // Inserts an item into the frontier
-		std::function<node_t*(frontier_t*)> pop             // Pops an item from the frontier
-		){
+		node_t * dst  // The end point of the search
+    ){
 
 		// Creates the visitor which does the search
 		frontier_t frontier;
 
-		// Visitor that directs tree navigation
-		std::function<node_t*(node_t *)> visitor = [&](node_t * node){
+        frontier.push(std::make_pair(src, 0));
+
+        while (!frontier.empty) {
+
+            std::pair<node_t_ptr, int> dataPair = frontier.pop();
+            node_t_ptr node = dataPair.first;
 
 			// Skips this node if it has already been visited
-			if (node->visited){
-				if (frontier.size()) return pop(&frontier);
-				else return (node_t*)NULL;
-			}
+			if (node->visited){ continue; }
+
 			node->visited = true;
 
 			// Stop the search if this is the solution
-			if (node == dst) return (node_t*)NULL;
+			if (node == dst) return;
 
 			// Otherwise, expand the node and add its children to the frontier
 			for each (auto child in node->adj){
 				double newCost = node->cost + sqdistance(node, child) + sqdistance(child, dst);
-				if (newCost < child->cost){
-					child->cost = newCost;
-					child->parent = node;
-					insert(&frontier, child);
-				}
+                frontier.push(std::make_pair(child, newCost));
+                // Update parent and cost in node
+                if (child->parent == NULL || newCost < child->cost) {
+                    child->cost = newCost;
+                    child->parent = parent;
+                }
 			}
+        }
 
-			// Return an item from the frontier
-			if (frontier.size()) return pop(&frontier);
-			else return (node_t*)NULL;
-		};
-
-		// Solves by recursively applying the visitor
-		recurse(src, visitor);
 	}
 
 	// Solves the puzzle using A*
@@ -80,19 +107,11 @@ namespace graph2D{
 
 		// Initialize the nodes of the graph
 		for each (auto node in G){
-			node->cost = DBL_MAX;
 			node->parent = NULL;
 			node->visited = false;
 		}
 		src->cost = 0;
 
-		// Call the generic solver
-		std::function<bool(node_t*, node_t*)> comparator =
-			[&](node_t * a, node_t * b){ return a->cost > b->cost; };
-		std::function<void(std::vector<node_t*>*, node_t *)> insert =
-			[&](std::vector<node_t*> * frontier, node_t * child){ frontier->push_back(child); std::push_heap(frontier->begin(), frontier->end(), comparator); };
-		std::function<node_t*(std::vector<node_t*>*)> pop =
-			[&](std::vector<node_t*> * frontier){ node_t * retval = frontier->front(); std::pop_heap(frontier->begin(), frontier->end(), comparator);  frontier->pop_back(); return retval; };
-		solve(src, dst, insert, pop);
+		solve<AStarFrontier>(src, dst);
 	}
 }
