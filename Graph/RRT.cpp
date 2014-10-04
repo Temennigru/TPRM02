@@ -17,7 +17,7 @@
 // Return if found dst
 bool RRT_t::addNode(graph2D::node_t_ptr dst){
 
-    srand (time(NULL));
+    srand ((int)time(NULL));
 
     graph2D::node_t_ptr node = new graph2D::node_t();
     node->x = (size_t)rand() % restrictions->getWidth();

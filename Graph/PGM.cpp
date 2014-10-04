@@ -114,7 +114,7 @@ void loadPGM(const char * FName, uint16_t ** &pixels, uint16_t &maxValue, uint16
 
 			// Check if value is within established bounds
 			if (pixels[i][j] > maxValue){
-				printf("ERROR: Element %i, %i is greater than maxval (%i > %i)\n", i, j, pixels[i][j], maxValue);
+				printf("ERROR: Element %i, %i is greater than maxval (%i > %i)\n", (int)i, (int)j, pixels[i][j], maxValue);
 				exit(-1);
 			}
 		}
