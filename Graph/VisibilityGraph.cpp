@@ -71,7 +71,7 @@ void VisibilityGraph_t::findPath(
 	y = (uint16_t*)malloc(cnt*sizeof(uint16_t));
 	//       Store step values
 	size_t idx = cnt - 1;
-	for (graph2D::node_t * aux = dst; aux->parent != NULL; aux = aux->parent){
+	for (graph2D::node_t * aux = dst; aux != NULL; aux = aux->parent){
 		x[idx] = aux->x;
 		y[idx] = aux->y;
 		idx--;

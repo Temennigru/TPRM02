@@ -1,4 +1,4 @@
-#include "ros/ros.h"
+/*#include "ros/ros.h"
 #include "../Robot/pointPublisher.h"
 
 int main(int argc, char ** argv){
@@ -15,4 +15,4 @@ int main(int argc, char ** argv){
 	points.push_back(D);
 	points.push_back(E);
 	publishPoints(points);
-}
+}*/

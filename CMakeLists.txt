@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(tp1)
 
+set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
@@ -20,9 +22,9 @@ catkin_package(CATKIN_DEPENDS message_runtime)
 include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_executable(control Robot/control.cpp)
-# add_executable(diffcontrol src/diff_control.cpp)
+add_executable(dummy Graph/dummy.cpp Robot/pointPublisher.cpp)
 add_dependencies(control tp1_control)
-# add_dependencies(diffcontrol tp1_diffcontrol)
+add_dependencies(dummy tp1_dummy )
 target_link_libraries(control ${catkin_LIBRARIES})
-# target_link_libraries(diffcontrol ${catkin_LIBRARIES})
+target_link_libraries(dummy ${catkin_LIBRARIES})
 

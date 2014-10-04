@@ -77,8 +77,8 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 
 void printFormatAndExit(void){
 	printf("Format:\n"); 
-	printf("\t(1) roslaunch tp1 control [Sensitivity] \"omni\" [KP] [KD] [KI] \n");
-	printf("\t(2) roslaunch tp1 control [Sensitivity] \"diff\" [KR] [KA] [KL] [KW]\n");
+	printf("\t(1) rosrun tp1 control [Sensitivity] \"omni\" [KP] [KD] [KI] \n");
+	printf("\t(2) rosrun tp1 control [Sensitivity] \"diff\" [KR] [KA] [KL] [KW]\n");
 	exit(-1);
 }
 int main(int argc, char **argv){
