@@ -17,7 +17,7 @@
 // Return if found dst
 bool RRT_t::addNode(graph2D::node_t_ptr dst){
 
-    srand (time(NULL));
+    srand ((int)time(NULL));
 
     graph2D::node_t_ptr node = new graph2D::node_t();
     node->x = (size_t)rand() % restrictions->getWidth();
@@ -27,10 +27,10 @@ bool RRT_t::addNode(graph2D::node_t_ptr dst){
     graph2D::node_t_ptr closest_node = NULL;
 
     // Find closest node
-    for each (auto n in G) {
-        if (closest_node == NULL || graph2D::sqdistance(n, node) < min_dist) {
-            closest_node = n;
-            min_dist = graph2D::sqdistance(n, node);
+    for (auto n = G.begin(); n != G.end(); n++) {
+        if (closest_node == NULL || graph2D::sqdistance(*n, node) < min_dist) {
+            closest_node = *n;
+            min_dist = graph2D::sqdistance(*n, node);
         }
     };
 
@@ -105,7 +105,7 @@ restrictions(restrictions)
 }
 
 RRT_t::~RRT_t(void){
-    for each (auto node in G) delete node;
+    for (auto node = G.begin(); node != G.end(); node++) delete *node;
 }
 
 // Finds a path between two points using the visibility graph
