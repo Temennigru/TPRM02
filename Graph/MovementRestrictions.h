@@ -30,6 +30,9 @@ public:
 
 	// Returns an array containing the coordinates of each distinct node in the graph
 	void getNodes(uint16_t * &x, uint16_t * &y, size_t &cnt);
+
+    uint16_t getWidth () { return this->width; }
+    uint16_t getHeight () { return this->height; }
 };
 
 #endif

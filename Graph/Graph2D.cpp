@@ -9,8 +9,6 @@
 
 namespace graph2D{
 
-    typedef node_t* node_t_ptr;
-
     class nodeGreater : public std::binary_function<std::pair<node_t_ptr, int>, std::pair<node_t_ptr, int>, bool> {
         bool operator() (const std::pair<node_t_ptr, int>& x, const std::pair<node_t_ptr, int>& y) const {return x.first->cost > y.first->cost;;}
     };

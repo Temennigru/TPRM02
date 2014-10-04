@@ -21,7 +21,9 @@ namespace graph2D{
 		node_t * parent;
 		double cost;
 		bool visited;
-	};
+    };
+
+    typedef node_t* node_t_ptr;
 
 	// Computes the square of the distance between two nodes
 	double sqdistance(node_t * a, node_t * b);
