@@ -5,6 +5,7 @@
 #include <list>
 #include <set>
 #include <queue>
+#include <iostream>
 #include "Graph2D.h"
 
 namespace graph2D{
@@ -89,14 +90,14 @@ namespace graph2D{
 
 			// Otherwise, expand the node and add its children to the frontier
             for (auto child = node->adj.begin(); child != node->adj.end(); child++) {
-				double newCost = node->cost + sqdistance(node, *child) + sqdistance(*child, dst);
+                double newCost = node->cost + sqdistance(node, *child) + sqdistance(*child, dst);
                 frontier.push(std::make_pair(*child, newCost));
                 // Update parent and cost in node
-                if ((*child)->parent == NULL || newCost < (*child)->cost) {
+                if (((*child)->parent == NULL || newCost < (*child)->cost) && *child != src) {
                     (*child)->cost = newCost;
                     (*child)->parent = node;
                 }
-			}
+            }
         }
 
 	}
@@ -108,7 +109,7 @@ namespace graph2D{
 		for (auto node = G.begin(); node != G.end(); node++) {
 			(*node)->parent = NULL;
 			(*node)->visited = false;
-		}
+        }
 		src->cost = 0;
 
 		solve<AStarFrontier>(src, dst);

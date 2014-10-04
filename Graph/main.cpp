@@ -6,7 +6,7 @@
 #include "MovementRestrictions.h"
 
 int main(int argc, char ** argv){
-	const char * PGMFile = "./pgm/tp1_floor1.pgm";
+	const char * PGMFile = "/Users/Jean/Desktop/UFMG/RM/TPS/TPRM01/Graph/pgm/tp1_floor1.pgm";
 	const double safetyRadius = 3.0;
 
 	MovementRestrictions_t restrictions(PGMFile, safetyRadius);
