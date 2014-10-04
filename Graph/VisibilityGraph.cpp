@@ -5,19 +5,9 @@
 void VisibilityGraph_t::addNode(graph2D::node_t * node){
 	for (auto n = G.begin(); n != G.end(); n++) {
 
-		// Check a few points allong the path to see if they are occupied or not (heuristic approach)
-		bool visible = true;
-		const size_t checkedPoints = 1;
-		double xInc = ((double)node->x - (double)(*n)->x) / (checkedPoints + 1);
-		double yInc = ((double)node->y - (double)(*n)->y) / (checkedPoints + 1);
-		for (size_t i = 1; i <= checkedPoints && visible; i++)
-			visible = restrictions->isUnocupied((*n)->x + xInc*i, (*n)->y + yInc*i);
-
-		// Check if any edge in the graph intersects the edge between both nodes
-		if (visible) visible = restrictions->isUnobstructed((*n)->x, (*n)->y, node->x, node->y);
-
 		// Add the edge if there is visibility between the two edges
-		if (visible) graph2D::addEdge((*n), node);
+		if (restrictions->isUnobstructed((*n)->x, (*n)->y, node->x, node->y)) 
+			graph2D::addEdge((*n), node);
 	}
 
 	// Insert the node into the graph-vector
