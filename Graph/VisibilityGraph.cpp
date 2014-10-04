@@ -3,21 +3,21 @@
 
 // Adds a node to the graph, computing it's visibility towards all other nodes already in the graph
 void VisibilityGraph_t::addNode(graph2D::node_t * node){
-	for each (auto n in G){
+	for (auto n = G.begin(); n != G.end(); n++) {
 
 		// Check a few points allong the path to see if they are occupied or not (heuristic approach)
 		bool visible = true;
 		const size_t checkedPoints = 1;
-		double xInc = ((double)node->x - (double)n->x) / (checkedPoints + 1);
-		double yInc = ((double)node->y - (double)n->y) / (checkedPoints + 1);
+		double xInc = ((double)node->x - (double)(*n)->x) / (checkedPoints + 1);
+		double yInc = ((double)node->y - (double)(*n)->y) / (checkedPoints + 1);
 		for (size_t i = 1; i <= checkedPoints && visible; i++)
-			visible = restrictions->isUnocupied(n->x + xInc*i, n->y + yInc*i);
+			visible = restrictions->isUnocupied((*n)->x + xInc*i, (*n)->y + yInc*i);
 
 		// Check if any edge in the graph intersects the edge between both nodes
-		if (visible) visible = restrictions->isUnobstructed(n->x, n->y, node->x, node->y);
+		if (visible) visible = restrictions->isUnobstructed((*n)->x, (*n)->y, node->x, node->y);
 
 		// Add the edge if there is visibility between the two edges
-		if (visible) graph2D::addEdge(n, node);
+		if (visible) graph2D::addEdge((*n), node);
 	}
 
 	// Insert the node into the graph-vector
@@ -45,7 +45,7 @@ VisibilityGraph_t::VisibilityGraph_t(MovementRestrictions_t * restrictions) :
 }
 
 VisibilityGraph_t::~VisibilityGraph_t(void){
-	for each (auto node in G) delete node;
+    for (auto node = G.begin(); node != G.end(); node++) delete *node;
 }
 
 // Finds a path between two points using the visibility graph
