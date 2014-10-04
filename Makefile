@@ -19,24 +19,24 @@ OBJECTS  := $(SOURCES:.c=*.o)
 rm        = rm -rf
 
 $(TARGET): obj
-    @$(LINKER) $(TARGET) $(LFLAGS) $(OBJECTS)
-    @echo "Linking complete!"
+	@$(LINKER) $(TARGET) $(LFLAGS) $(OBJECTS)
+	@echo "Linking complete!"
 
 obj: $(SOURCES) $(INCLUDES)
-    @$(CC) $(CFLAGS) -DNDEBUG $(SOURCES)
-    @echo "Compilation complete!"
+	@$(CC) $(CFLAGS) -DNDEBUG $(SOURCES)
+	@echo "Compilation complete!"
 
 #debug:
 #	gcc $(DFLAGS) $(SOURCES) -o $(TARGET)
 
 dobj: $(SOURCES) $(INCLUDES)
-    @$(CC) $(CFLAGS) $(DFLAGS) $(SOURCES)
-    @echo "dlinking complete!"
+	@$(CC) $(CFLAGS) $(DFLAGS) $(SOURCES)
+	@echo "dlinking complete!"
 
 debug: dobj
-    @$(LINKER) $(TARGET) $(LFLAGS) $(DFLAGS) $(OBJECTS) -o $(TARGET)
-    @echo "dcompilation complete!"
+	@$(LINKER) $(TARGET) $(LFLAGS) $(DFLAGS) $(OBJECTS) -o $(TARGET)
+	@echo "dcompilation complete!"
 
 clean:
-    @$(rm) $(TARGET) $(OBJECTS) *.dSYM
-    @echo "Cleanup complete!"
+	@$(rm) $(TARGET) $(OBJECTS) *.dSYM
+	@echo "Cleanup complete!"
