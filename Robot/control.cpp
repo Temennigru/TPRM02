@@ -1,14 +1,10 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
-//#include "../msg_gen/cpp/include/tp1/R_ID.h"
-//#include "../msg_gen/cpp/include/tp1/Twist.h"
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/LaserScan.h>
-//#include <geometry_msgs/Vector3.h>
-#include <tp1/ccoord.h>
-#include <sstream>
-#include "math.h"
+#include <cmath>
 #include <list>
+#include <tp1/ccoord.h>
 
 // Coordinate instructions sent to the robot
 //       The current objective
