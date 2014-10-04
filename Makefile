@@ -1,13 +1,12 @@
 # project name (generate executable with this name)
 COMPILER = g++
-LINKER   = g++
 TARGET   = rostest
 
 CC       = $(COMPILER) -std=c++0x -c
 # compiling flags here
 CFLAGS   = -Wall -I.
 
-LINKER   = $(LINKER) -o
+LINKER   = $(COMPILER) -o
 # linking flags here
 LFLAGS   = -Wall
 
