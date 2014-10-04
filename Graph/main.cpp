@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 #include "MovementRestrictions.h"
 #include "VisibilityGraph.h"
@@ -7,7 +8,7 @@
 
 void printFormatAndExit(void){
 	printf("Format:\n");
-	printf("	(1) rosrun tp1 path [srcX] [srcY] [dstX] [dstY] [pgm file] [padding] RRT \n");
+	printf("	(2) rosrun tp1 path [srcX] [srcY] [dstX] [dstY] [pgm file] [padding] RRT \n");
 	printf("	(1) rosrun tp1 path [srcX] [srcY] [dstX] [dstY] [pgm file] [padding] VisibilityGraph\n");
 	exit(0);
 }

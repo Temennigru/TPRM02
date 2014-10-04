@@ -8,9 +8,11 @@
 
 #include "RRT.h"
 #include <cstdlib>
+#include <cmath>
 
 
 #define MAX_DIST 4.0f
+#define SQ_MAX_DIST 16.0f
 
 
 // Adds a node to the graph, computing it's visibility towards all other nodes already in the graph
@@ -49,7 +51,7 @@ bool RRT_t::addNode(graph2D::node_t_ptr dst){
         G.push_back(node);
     }
 
-    if (graph2D::sqdistance(node, dst) < MAX_DIST) {
+    if (graph2D::sqdistance(node, dst) <= SQ_MAX_DIST) {
         // Check visibility
 		graph2D::addEdge(node, dst);		
 		G.push_back(dst);
