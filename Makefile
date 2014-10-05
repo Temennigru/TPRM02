@@ -1,5 +1,5 @@
 all:
-	cp -r . $(HOME)/catkin_ws/src/robot
+	cp -r . $(HOME)/catkin_ws/src/tp1
 	cd $(HOME)"/catkin_ws"; \
 	mkdir devel/include; \
 	mkdir devel/include/tp1; \
