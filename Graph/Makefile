@@ -4,9 +4,9 @@ TARGET   = rostest
 
 CC       = $(COMPILER) -std=c++0x -c
 # compiling flags here
-CFLAGS   = -Wall -I.
+CFLAGS   = -I.
 
-LINKER   = $(COMPILER) -o
+LINKER   = $(COMPILER) -std=c++0x -o
 # linking flags here
 LFLAGS   = -Wall
 
