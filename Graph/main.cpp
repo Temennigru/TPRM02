@@ -5,6 +5,7 @@
 #include "VisibilityGraph.h"
 #include "RRT.h"
 #include "../Robot/pointPublisher.h"
+#include "ros/ros.h"
 
 void printFormatAndExit(void){
 	printf("Format:\n");
@@ -14,6 +15,9 @@ void printFormatAndExit(void){
 }
 
 int main(int argc, char ** argv){
+
+	// Initialize ros
+	ros::init(argc, argv, "path_designator");		
 
 	// Sanitize inputs
 	const char * argSrcX = argv[1];
@@ -63,7 +67,7 @@ int main(int argc, char ** argv){
 		printf("[%zu] %lf, %lf\n", i, aux.x, aux.y);
 		path.push_back(aux);
 	}
-	//publishPoints(path);
+	publishPoints(path);
 
 	// Free resources and exit
 	free(pathX);
