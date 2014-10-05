@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <unistd.h>
 #include "MovementRestrictions.h"
 #include "VisibilityGraph.h"
 #include "RRT.h"
@@ -18,6 +19,10 @@ int main(int argc, char ** argv){
 
 	// Initialize ros
 	ros::init(argc, argv, "path_designator");		
+	ros::NodeHandle n;
+	ros::Rate loop_rate(10);
+	ros::Publisher cmdPosPub = n.advertise<tp1::ccoord>("cmd_pos", 10); 
+	sleep(1);	
 
 	// Sanitize inputs
 	const char * argSrcX = argv[1];
@@ -49,7 +54,17 @@ int main(int argc, char ** argv){
 
 	// Load PGM file, computing restrictions
 	MovementRestrictions_t restrictions(PGMFile, padding);
+
+	// Verify if the source and destination nodes are not within solid objects
+	if(!restrictions.isUnocupied(srcX, srcY) || !restrictions.isUnocupied(dstX, dstY)){
+		fprintf(stderr, "ERROR: Source or destination points are within obstacles or their padding!\n");
+		exit(1);
+	} else if(srcX < 0 || srcY < 0 || srcX >= restrictions.getWidth() || srcY >= restrictions.getHeight()){
+		fprintf(stderr, "ERROR: Source or destination points are out of bounds!\n");
+		exit(1);
+	}
 	
+
 	// Compute path
 	uint16_t * pathX, * pathY, pathSize;
 	if(SELECTED_ALGORITHM == RRT){
@@ -61,13 +76,24 @@ int main(int argc, char ** argv){
 	}
 	
 	// Add the points in the path to a list, and send it to the controler
-	std::list<tp1::ccoord> path;
+	//std::list<tp1::ccoord> path;
 	for(size_t i = 0; i < pathSize; i++){
-		tp1::ccoord aux; aux.x = pathX[i]; aux.y = pathY[i]; aux.theta = 0;
+		tp1::ccoord aux; aux.x = pathX[i]/10.0; aux.y = pathY[i]/10.0; aux.theta = 0;
 		printf("[%zu] %lf, %lf\n", i, aux.x, aux.y);
-		path.push_back(aux);
+		cmdPosPub.publish(aux);
+		loop_rate.sleep();		
 	}
-	publishPoints(path);
+	/*tp1::ccoord A; A.x = 0; A.y = 0; A.theta = 0;
+	tp1::ccoord B; B.x = 0; B.y = 5; B.theta = 0;
+	tp1::ccoord C; C.x = 5; C.y = 5; C.theta = 0;
+	tp1::ccoord D; D.x = 5; D.y = 0; D.theta = 0;
+	tp1::ccoord E; E.x = 0; E.y = 0; E.theta = 0;
+	path.push_back(A);
+	path.push_back(B);
+	path.push_back(C);
+	path.push_back(D);
+	path.push_back(E);
+	publishPoints(path);*/
 
 	// Free resources and exit
 	free(pathX);

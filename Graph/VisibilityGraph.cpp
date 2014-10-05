@@ -52,6 +52,12 @@ void VisibilityGraph_t::findPath(
 	// Use A* algorithm to compute the shortest path
 	graph2D::solve(src, dst, G);
 
+	// Verify that a path exists
+	if(dst->parent == NULL){
+		fprintf(stderr, "ERROR: No path found between source and destination!\n");
+		exit(-1);	
+	}
+
 	// Store the path taken
 	//       Count the number of nodes from dst to src
 	cnt = 1;

@@ -11,6 +11,14 @@ MovementRestrictions_t::MovementRestrictions_t(const char * PGMFileName, double 
 	// Loads a PGM image from disk
 	uint16_t ** pixels, maxValue;
 	loadPGM(PGMFileName, pixels, maxValue, width, height);
+	/*
+	printf("PGM File:\n");	
+	for (size_t i = 0; i < height; i += 2){
+		for (size_t j = 0; j < width; j += 2){
+			printf("%i", pixels[i][j] == 0 ? 0 : 1);
+		}
+		printf("\n");		
+	}*/
 
 	// Padds the borders on the image file; bool values represent passable or non-passable
 	opaqueCells = (bool**)malloc(height*sizeof(bool*));
@@ -24,11 +32,18 @@ MovementRestrictions_t::MovementRestrictions_t(const char * PGMFileName, double 
 			size_t ymax = std::min<size_t>(i + (size_t)ceil(paddingRadius), width - 1);
 			for (size_t y = ymin; y <= ymax && !opaqueCells[i][j]; y++){
 				for (size_t x = xmin; x <= xmax && !opaqueCells[i][j]; x++){
-					if ((y - i)*(y - i) + (x - j)*(x - j) < paddingRadius*paddingRadius && pixels[y][x] != maxValue) opaqueCells[i][j] = true;
+					if ((y - i)*(y - i) + (x - j)*(x - j) <= paddingRadius*paddingRadius && pixels[y][x] != maxValue) opaqueCells[i][j] = true;
 				}
 			}
 		}
 	}
+	/*printf("Opacity:\n");		
+	for (size_t i = 0; i < height; i += 2){
+		for (size_t j = 0; j < width; j += 2){
+			printf("%i", opaqueCells[i][j] ? 0 : 1);
+		}
+		printf("\n");		
+	}*/
 
 	// Free the original image
 	for (size_t i = 0; i < height; i++) free(pixels[i]);
@@ -51,6 +66,14 @@ MovementRestrictions_t::MovementRestrictions_t(const char * PGMFileName, double 
 				);
 		}
 	}
+	/*printf("Borders:\n");		
+	for (size_t i = 0; i < height; i += 2){
+		for (size_t j = 0; j < width; j += 2){
+			printf("%i", (borderCells[i][j] || borderCells[i + 1][j] || borderCells[i + 1][j + 1]  || borderCells[i + 1][j + 1]) ? 1 : 0);
+		}
+		printf("\n");		
+	}*/
+
 
 	// Generate a segment list
 	//      Count the total number of segments
@@ -142,12 +165,16 @@ bool MovementRestrictions_t::isUnocupied(double x, double y){
 
 // Returns an array containing the coordinates of each distinct node in the graph
 void MovementRestrictions_t::getNodes(uint16_t * &x, uint16_t * &y, size_t &cnt){
+	
+	printf("%i segments\n", segmentCnt);
 	bool ** incidence = (bool**)malloc(height*sizeof(bool*));
 	for (size_t i = 0; i < height; i++) incidence[i] = (bool*)calloc(width, sizeof(bool));
 	for (size_t i = 0; i < segmentCnt; i++) 
 		incidence[segmentPy[i]][segmentPx[i]] = incidence[segmentQy[i]][segmentQx[i]] = true;
 	cnt = 0;
-	for (size_t i = 0; i < height; i++) for (size_t j = 0; j < width; j++) cnt += incidence[i][j] ? 1 : 0;	
+	for (size_t i = 0; i < height; i++){
+		for (size_t j = 0; j < width; j++) cnt += incidence[i][j] ? 1 : 0;
+	}
 	x = (uint16_t*)malloc(cnt*sizeof(uint16_t));
 	y = (uint16_t*)malloc(cnt*sizeof(uint16_t));
 	size_t idx = 0;
@@ -160,4 +187,6 @@ void MovementRestrictions_t::getNodes(uint16_t * &x, uint16_t * &y, size_t &cnt)
 			}
 		}
 	}
+	for (size_t i = 0; i < height; i++) free(incidence[i]);
+	free(incidence = (bool**)malloc(height*sizeof(bool*)));
 }

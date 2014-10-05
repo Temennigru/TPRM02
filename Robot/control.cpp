@@ -14,7 +14,7 @@ volatile double goaly;
 std::list<tp1::ccoord> goalQueue;
 void goalCallback(const tp1::ccoord &msg){
 	printf("told to go to (%lf, %lf)\n", msg.x, msg.y);
-	goalQueue.push_front(msg);	
+	goalQueue.push_back(msg);	
 }
 void loadNextGoal(void){
 
@@ -30,12 +30,14 @@ void loadNextGoal(void){
 }
 
 // Position of the robot
+volatile double originX;
+volatile double originY;
 volatile double px;
 volatile double py;
 volatile double theta;
 void odomCallback(const nav_msgs::Odometry &msg){
-	px = msg.pose.pose.position.x;
-	py = msg.pose.pose.position.y;
+	px = msg.pose.pose.position.x + originX;
+	py = msg.pose.pose.position.y + originY;
 	theta = asin(msg.pose.pose.orientation.z)*2;
 }
 
@@ -61,9 +63,6 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 		if(r <= msg.range_min || r >= msg.range_max/* || r >= rangeIgnore || r >= d*/) continue;		
 		fxr += -KR*cos(phi)/std::max(r - 1.0, 0.01);		
 		fyr += -KR*sin(phi)/std::max(r - 1.0, 0.01);
-		//fxr += -KR*sin(phi)/std::max(r - 0.75, 0.01);		
-		//fyr += -KR*cos(phi)/std::max(r - 0.75, 0.01);
-		//printf("(%i) laser got (%lf,%lf)\n", idx, phi, r);		
 	}
 	
 	
@@ -77,31 +76,36 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 
 void printFormatAndExit(void){
 	printf("Format:\n"); 
-	printf("\t(1) rosrun tp1 control [Sensitivity] \"omni\" [KP] [KD] [KI] \n");
-	printf("\t(2) rosrun tp1 control [Sensitivity] \"diff\" [KR] [KA] [KL] [KW]\n");
+	printf("\t(1) rosrun tp1 control [origin x] [origin y] [Sensitivity] \"omni\" [KP] [KD] [KI] \n");
+	printf("\t(2) rosrun tp1 control [origin x] [origin y] [Sensitivity] \"diff\" [KR] [KA] [KL] [KW]\n");
 	exit(-1);
 }
 int main(int argc, char **argv){
 
 	// Sanitize inputs
 	//      Label inputs
-	const char * argSensitivity = argv[1];
-	const char * argDriveType = argv[2];
-	const char * argKP = argv[3];
-	const char * argKD = argv[4];
-	const char * argKI = argv[5];
-	const char * argKR = argv[3];
-	const char * argKA = argv[4];
-	const char * argKL = argv[5];
-	const char * argKW = argv[6];
+	const char * argOriginX = argv[1];
+	const char * argOriginY = argv[2];
+	const char * argSensitivity = argv[3];
+	const char * argDriveType = argv[4];
+	const char * argKP = argv[5];
+	const char * argKD = argv[6];
+	const char * argKI = argv[7];
+	const char * argKR = argv[5];
+	const char * argKA = argv[6];
+	const char * argKL = argv[7];
+	const char * argKW = argv[8];
 	//      Verify arg-count
-	const size_t expectedParamsDiff = 6;	
-	const size_t expectedParamsOmni = 5;	
+	const size_t expectedParamsDiff = 8;	
+	const size_t expectedParamsOmni = 7;	
 	if(argc <= 1) printFormatAndExit();
 	if(argc != expectedParamsDiff + 1 && argc != expectedParamsOmni + 1) {
 		fprintf(stderr, "ERROR: Expected %zu or %zu params, got %i.\n", expectedParamsDiff, expectedParamsOmni, argc - 1);
 		printFormatAndExit();
 	}
+	//      Decode initial position
+	originX = atof(argOriginX);
+	originY = atof(argOriginY);
 	//      Decode drive type
 	enum {DIFF_DRIVE, OMNI_DRIVE} driveType;
 	if(strcmp(argDriveType, "diff") == 0){

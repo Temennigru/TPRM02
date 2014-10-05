@@ -76,7 +76,8 @@ void RRT_t::findPath(
     // Dist won't be added as to not mess up the algorithm
     graph2D::node_t * src = new graph2D::node_t(); src->x = srcX; src->y = srcY;
     graph2D::node_t * dst = new graph2D::node_t(); dst->x = dstX; dst->y = dstY;
-	G.push_back(src);
+    G.push_back(src);
+    srand((int)time(NULL));
 	
     // Populate the graph
     while (!this->addNode(dst)) {}

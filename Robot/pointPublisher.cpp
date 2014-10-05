@@ -8,7 +8,9 @@ void publishPoints(std::list<tp1::ccoord> points){
 	ros::Rate loop_rate(10);
 	ros::Publisher cmdPosPub = n.advertise<tp1::ccoord>("cmd_pos", 10); 
 	for(auto i = points.begin(), iend = points.end(); i != iend && ros::ok(); i++){
+		putchar('.');		
 		cmdPosPub.publish(*i);
 		loop_rate.sleep();
 	}
+	getchar();
 }

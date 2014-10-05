@@ -99,21 +99,21 @@ void loadPGM(const char * FName, uint16_t ** &pixels, uint16_t &maxValue, uint16
 		for (size_t j = 0; j < width; j++){
 
 			// P2 format (ascii)
-			if (!isP5) pixels[i][j] = readDecimal(dataPtr);
+			if (!isP5) pixels[height - i - 1][j] = readDecimal(dataPtr);
 
 			// P5 format (binary)
 			else{
 				if (oneByte){				
-					pixels[i][j] = dataPtr[0];
+					pixels[height - i - 1][j] = dataPtr[0];
 					dataPtr++;
 				} else{
-					pixels[i][j] = dataPtr[0] << 8 | dataPtr[1];
+					pixels[height - i - 1][j] = dataPtr[0] << 8 | dataPtr[1];
 					dataPtr += 2;
 				}
 			}
 
 			// Check if value is within established bounds
-			if (pixels[i][j] > maxValue){
+			if (pixels[height - i - 1][j] > maxValue){
 				printf("ERROR: Element %i, %i is greater than maxval (%i > %i)\n", (int)i, (int)j, pixels[i][j], maxValue);
 				exit(-1);
 			}

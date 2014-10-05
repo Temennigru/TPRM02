@@ -1,8 +1,14 @@
-/*#include "ros/ros.h"
+#include "ros/ros.h"
 #include "../Robot/pointPublisher.h"
 
+void printFormatAndExit(void){
+	printf("Format:\n");
+	printf("	(2) rosrun tp1 path [srcX] [srcY] [dstX] [dstY] [pgm file] [padding] RRT \n");
+	printf("	(1) rosrun tp1 path [srcX] [srcY] [dstX] [dstY] [pgm file] [padding] VisibilityGraph\n");
+	exit(0);
+}
 int main(int argc, char ** argv){
-	ros::init(argc, argv, "path_designator");	
+	ros::init(argc, argv, "dummy_designator");	
 	std::list<tp1::ccoord> points;
 	tp1::ccoord A; A.x = 0; A.y = 0; A.theta = 0;
 	tp1::ccoord B; B.x = 0; B.y = 5; B.theta = 0;
@@ -15,4 +21,4 @@ int main(int argc, char ** argv){
 	points.push_back(D);
 	points.push_back(E);
 	publishPoints(points);
-}*/
+}
