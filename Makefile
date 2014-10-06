@@ -10,5 +10,7 @@ clean:
 	echo "Cleanup complete!"
 
 run:
+	source /opt/ros/indigo/setup.bash
+	source $(HOME)/catkin_ws/devel/setup.bash
 	chmod 777 run.sh
 	$(shell ./run.sh $<)
