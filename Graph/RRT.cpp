@@ -105,6 +105,4 @@ void RRT_t::findPath(
     graph2D::removeNode(dst);
     G.pop_back();
     G.pop_back();
-    delete src;
-    delete dst;
 }
