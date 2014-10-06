@@ -1,3 +1,4 @@
+echo "Setting up ROS"
 cd $HOME/catkin_ws/; \
 roscore &
 sleep 2; rosrun stage_ros stageros $HOME/catkin_ws/src/tp1/world/omniworld_3.world &
