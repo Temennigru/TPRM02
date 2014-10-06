@@ -52,6 +52,7 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 	float csi = atan2(goaly - py, goalx - px) - theta;
 	float fxa = KA*d*cos(csi);
 	float fya = KA*d*sin(csi);
+	printf("fxa fxy %lf %lf\n", fxa, fya);
 
 	// Compute the repulsive force
 	float fxr = 0, fyr = 0;
@@ -61,8 +62,8 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 		//if(phi < -M_PI*45.0/180 || phi > M_PI*45.0/180) continue;		
 		float r = msg.ranges[idx++];
 		if(r <= msg.range_min || r >= msg.range_max/* || r >= rangeIgnore || r >= d*/) continue;		
-		fxr += -KR*cos(phi)/std::max(r - 1.0, 0.01);		
-		fyr += -KR*sin(phi)/std::max(r - 1.0, 0.01);
+		fxr += -KR*cos(phi)/std::max(r - 0.5, 0.01);		
+		fyr += -KR*sin(phi)/std::max(r - 0.5, 0.01);
 	}
 	
 	
@@ -192,6 +193,8 @@ int main(int argc, char **argv){
 		}
 
 
+		printf("error: ((%lf %lf) %lf) ((%lf %lf) %lf) %lf\n", goalx, px, ex, goaly, py, ey, ex*ex + ey*ey);
+
 		// Check if the new error is within acceptible bounds, if so, load the next goal
 		if(ex*ex + ey*ey < sensitivity*sensitivity){
 
@@ -212,6 +215,8 @@ int main(int argc, char **argv){
 				dex = dey = 0;
 				ex = ey = 0;
 				iex = iey = 0;
+			} else{
+				ex = ey = 0;
 			}
 
 		// Otherwise, update velocities		

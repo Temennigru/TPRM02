@@ -10,8 +10,8 @@
 
 void printFormatAndExit(void){
 	printf("Format:\n");
-	printf("	(2) rosrun tp1 path [srcX] [srcY] [dstX] [dstY] [pgm file] [padding] RRT \n");
-	printf("	(1) rosrun tp1 path [srcX] [srcY] [dstX] [dstY] [pgm file] [padding] VisibilityGraph\n");
+	printf("	(1) rosrun tp1 path [srcX] [srcY] [dstX] [dstY] [pgm file] [padding] RRT \n");
+	printf("	(2) rosrun tp1 path [srcX] [srcY] [dstX] [dstY] [pgm file] [padding] VisibilityGraph\n");
 	exit(0);
 }
 
@@ -83,17 +83,7 @@ int main(int argc, char ** argv){
 		cmdPosPub.publish(aux);
 		loop_rate.sleep();		
 	}
-	/*tp1::ccoord A; A.x = 0; A.y = 0; A.theta = 0;
-	tp1::ccoord B; B.x = 0; B.y = 5; B.theta = 0;
-	tp1::ccoord C; C.x = 5; C.y = 5; C.theta = 0;
-	tp1::ccoord D; D.x = 5; D.y = 0; D.theta = 0;
-	tp1::ccoord E; E.x = 0; E.y = 0; E.theta = 0;
-	path.push_back(A);
-	path.push_back(B);
-	path.push_back(C);
-	path.push_back(D);
-	path.push_back(E);
-	publishPoints(path);*/
+	//publishPoints(path);
 
 	// Free resources and exit
 	free(pathX);
