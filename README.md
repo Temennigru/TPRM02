@@ -1,6 +1,10 @@
 TPRM01
 ======
 
+Group:
+Jean-Luc Nacif Coelho - 2011049207
+André Lloyd Harder - 2011048910
+
 Makefile commands:
 
 make: Copies relevant files to catkin workspace (must be in ~/catkin_ws) and runs catkin make.
