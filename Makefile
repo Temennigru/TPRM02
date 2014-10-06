@@ -10,5 +10,5 @@ clean:
 	echo "Cleanup complete!"
 
 run:
-	chmod 777 runrrt.sh
-	$(shell ./runrrt.sh $<)
+	chmod 777 run.sh
+	$(shell ./run.sh $<)
