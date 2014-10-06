@@ -52,7 +52,7 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 	float csi = atan2(goaly - py, goalx - px) - theta;
 	float fxa = KA*d*cos(csi);
 	float fya = KA*d*sin(csi);
-	printf("fxa fxy %lf %lf\n", fxa, fya);
+	printf("d = %lf, csi = atan2(%lf, %lf) - %lf = %lf", d, goaly - py, goalx - px, theta, csi);	
 
 	// Compute the repulsive force
 	float fxr = 0, fyr = 0;
@@ -71,8 +71,10 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 	//printf("fxr %lf, fyr %lf\n", fxr, fyr);
 	float fx = fxa + fxr;
 	float fy = fya + fyr;
-	v = KL*(fx*cos(theta) + fy*sin(theta));
-	omega = KW*(atan2(fy, fx) - theta);	
+	v = KL*fx;
+	omega = KW*fy;
+	printf("fxa %lf fya %lf fx %lf fy %lf\n", fxa, fya, fx, fy);
+	
 }
 
 void printFormatAndExit(void){
