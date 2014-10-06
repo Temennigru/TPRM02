@@ -52,8 +52,7 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 	float csi = atan2(goaly - py, goalx - px) - theta;
 	float fxa = KA*d*cos(csi);
 	float fya = KA*d*sin(csi);
-	printf("d = %lf, csi = atan2(%lf, %lf) - %lf = %lf", d, goaly - py, goalx - px, theta, csi);	
-
+	
 	// Compute the repulsive force
 	float fxr = 0, fyr = 0;
 	size_t idx = 0;
@@ -73,7 +72,6 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 	float fy = fya + fyr;
 	v = KL*fx;
 	omega = KW*fy;
-	printf("fxa %lf fya %lf fx %lf fy %lf\n", fxa, fya, fx, fy);
 	
 }
 
@@ -193,9 +191,6 @@ int main(int argc, char **argv){
 			ex = goalx - px;
 			ey = goaly - py;
 		}
-
-
-		printf("error: ((%lf %lf) %lf) ((%lf %lf) %lf) %lf\n", goalx, px, ex, goaly, py, ey, ex*ex + ey*ey);
 
 		// Check if the new error is within acceptible bounds, if so, load the next goal
 		if(ex*ex + ey*ey < sensitivity*sensitivity){

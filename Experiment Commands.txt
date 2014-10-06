@@ -48,16 +48,20 @@ Potential:
 	roscore
 	rosrun stage_ros stageros src/tp1/world/diffworld_1.world
 	rostopic pub -1 /cmd_pos tp1/ccoord "{x: 20.0, y: 20.0, theta: 0.0}"	
+	rosrun tp1 control 2 2 1 diff 1 9 1 1
 2:
 	roscore
 	rosrun stage_ros stageros src/tp1/world/diffworld_2.world
-	rostopic pub -1 /cmd_pos tp1/ccoord "{x: 22.0, y: 22.0, theta: 0.0}"	
+	rostopic pub -1 /cmd_pos tp1/ccoord "{x: 22.0, y: 22.0, theta: 0.0}"
+	rosrun tp1 control 2 2 1 diff 1 9 1 1	
 3:
 	roscore
 	rosrun stage_ros stageros src/tp1/world/diffworld_3.world
 	rostopic pub -1 /cmd_pos tp1/ccoord "{x: 22.0, y: 22.0, theta: 0.0}"	
+	rosrun tp1 control 2 2 1 diff 1 9 1 1
 4:
 	roscore
 	rosrun stage_ros stageros src/tp1/world/diffworld_4.world
 	rostopic pub -1 /cmd_pos tp1/ccoord "{x: 20.0, y: 20.0, theta: 0.0}"
+	rosrun tp1 control 2 2 1 diff 1 9 1 1
 	
