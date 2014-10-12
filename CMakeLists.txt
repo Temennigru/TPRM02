@@ -22,10 +22,9 @@ catkin_package(CATKIN_DEPENDS message_runtime)
 include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_executable(control Robot/control.cpp)
-add_executable(path Graph/main.cpp Graph/Graph2D.cpp Graph/VisibilityGraph.cpp Graph/RRT.cpp Graph/PGM.cpp Graph/SegmentIntersect.cpp Graph/MovementRestrictions.cpp Robot/pointPublisher.cpp)
+add_executable(dummy Graph/dummy.cpp Robot/pointPublisher.cpp)
 add_dependencies(control tp1_control)
-add_dependencies(path tp1_path )
+add_dependencies(dummy tp1_dummy )
 target_link_libraries(control ${catkin_LIBRARIES})
-target_link_libraries(path ${catkin_LIBRARIES})
-
+target_link_libraries(dummy ${catkin_LIBRARIES})
 
