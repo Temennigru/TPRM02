@@ -92,7 +92,7 @@ void RRT_t::findPath(
     y = (uint16_t*)malloc(cnt*sizeof(uint16_t));
     //       Store step values
     size_t idx = cnt - 1;
-    for (graph2D::node_t * aux = dst; aux != NULL; aux = aux->parent){
+    for (graph2D::node_t * aux = G.back(); aux != NULL; aux = aux->parent){
         x[idx] = aux->x;
         y[idx] = aux->y;
         idx--;
@@ -100,7 +100,5 @@ void RRT_t::findPath(
     
     // Remove the added edges from the graph
     graph2D::removeNode(src);
-    graph2D::removeNode(dst);
-    G.pop_back();
-    G.pop_back();
+    G.pop_front();
 }
