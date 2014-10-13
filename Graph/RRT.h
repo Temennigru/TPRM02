@@ -21,20 +21,20 @@ private:
     size_t nodeCnt;
 
     // The obstacles and restrictions
-    MovementRestrictions_t *restrictions;
+    OccupancyGrid_t *restrictions;
 
     // Adds a node to the graph, computing it's visibility towards all other nodes already in the graph
-    bool addNode(graph2D::node_t * node);
+    bool addNode();
 
 public:
 
     // Constructor/Destructor
-    RRT_t(MovementRestrictions_t *restrictions);
+    RRT_t(OccupancyGrid_t *restrictions);
     ~RRT_t(void);
 
     // Finds a path between two points using the visibility graph
     void findPath(
-                  uint16_t srcX, uint16_t srcY, uint16_t dstX, uint16_t dstY,
+                  uint16_t srcX, uint16_t srcY,
                   uint16_t * &x, uint16_t * &y, uint16_t &cnt
                   );
 

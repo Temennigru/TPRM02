@@ -17,7 +17,7 @@
 
 // Adds a node to the graph, computing it's visibility towards all other nodes already in the graph
 // Return if found dst
-bool RRT_t::addNode(graph2D::node_t_ptr dst){
+bool RRT_t::addNode(){
 
     graph2D::node_t_ptr node = new graph2D::node_t();
     node->x = (size_t)rand() % restrictions->getWidth();
@@ -45,23 +45,22 @@ bool RRT_t::addNode(graph2D::node_t_ptr dst){
 
     // Add the edge and insert the node if there is visibility between the two edges
     if (visible) {
-        graph2D::addEdge(closest_node, node);
-
-        // Insert the node into the graph-vector
-        G.push_back(node);
-    }
-
-    if (graph2D::sqdistance(node, dst) <= SQ_MAX_DIST) {
-        // Check visibility
-		graph2D::addEdge(node, dst);		
-		G.push_back(dst);
-		return true;
+        if (getOccupancyProbability((int)node->x, (int)node->y) != -1.0 ) { // Explored
+            // Insert the node into the graph-vector
+            graph2D::addEdge(closest_node, node);
+            G.push_back(node);
+        } else { // Node is after the final frontier
+            // Check visibility
+            graph2D::addEdge(node, dst);
+            G.push_back(dst);
+            return true;
+        }
     }
     return false;
 }
 
 // Constructor/Destructor
-RRT_t::RRT_t(MovementRestrictions_t * restrictions) : restrictions(restrictions) {}
+RRT_t::RRT_t(OccupancyGrid_t * restrictions) : restrictions(restrictions) {}
 
 RRT_t::~RRT_t(void){
     for (auto node = G.begin(); node != G.end(); node++) delete *node;
@@ -69,13 +68,12 @@ RRT_t::~RRT_t(void){
 
 // Finds a path between two points using the visibility graph
 void RRT_t::findPath(
-                                 uint16_t srcX, uint16_t srcY, uint16_t dstX, uint16_t dstY,
+                                 uint16_t srcX, uint16_t srcY,
                                  uint16_t * &x, uint16_t * &y, uint16_t &cnt
                                  ){
     // Add the source and destination as nodes in the graph
     // Dist won't be added as to not mess up the algorithm
     graph2D::node_t * src = new graph2D::node_t(); src->x = srcX; src->y = srcY;
-    graph2D::node_t * dst = new graph2D::node_t(); dst->x = dstX; dst->y = dstY;
     G.push_back(src);
     srand((int)time(NULL));
 	
@@ -83,12 +81,12 @@ void RRT_t::findPath(
     while (!this->addNode(dst)) {}
 
     // Use A* algorithm to compute the shortest path
-    graph2D::solve(src, dst, G);
+    graph2D::solve(src, G);
 
     // Store the path taken
     //       Count the number of nodes from dst to src
     cnt = 1;
-    for (graph2D::node_t * aux = dst; aux->parent != NULL; aux = aux->parent) cnt++;
+    for (graph2D::node_t * aux = G.back(); aux->parent != NULL; aux = aux->parent) cnt++;
     //       Allocate memory for steps
     x = (uint16_t*)malloc(cnt*sizeof(uint16_t));
     y = (uint16_t*)malloc(cnt*sizeof(uint16_t));
