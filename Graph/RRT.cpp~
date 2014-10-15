@@ -85,7 +85,7 @@ void RRT_t::findPath(
     while (!this->addNode(dst));
 
     // Use A* algorithm to compute the shortest path
-    graph2D::solve(src, dst, G);
+    graph2D::solve(src, G);
 
     // Store the path taken
     //       Count the number of nodes from dst to src
