@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <cctype>
 
-namespace{
+namespace {
 	
 	bool isWhitespace(unsigned char * &data){
 		return *data == ' ' || *data == '\r' || *data == '\n' || *data == '\t';
@@ -128,4 +128,66 @@ void loadPGM(const char * FName, uint16_t ** &pixels, uint16_t &maxValue, uint16
 
 	// Free resources and exit
 	free(data);
+}
+
+// Loads a PGM (portable gray map) file from a file FName; 0 is black, maxValue is white
+void makePGM(const char * FName, uint16_t ** pixels, uint16_t maxValue, uint16_t width, uint16_t height){
+
+    // Open the input file
+    FILE * out = fopen(FName, "w");
+    if (!out){
+        printf("ERROR: Unable to open pgm file \"%s\" for writing!", FName);
+        exit(-1);
+    }
+
+    unsigned char buffer;
+
+    // Print magic number
+    buffer = (unsigned char) 80; // P
+    fprintf(out, "%c", buffer);
+    buffer = (unsigned char) 53; // 5
+    fprintf(out, "%c", buffer);
+    buffer = (unsigned char) 10; // LF
+    fprintf(out, "%c", buffer);
+
+    fprintf(out, "%d ", width);
+    fprintf(out, "%d ", height);
+
+    buffer = (unsigned char) 10; // LF
+    fprintf(out, "%c", buffer);
+
+    fprintf(out, "%d ", maxValue);
+
+    bool oneByte = maxValue < 256;
+
+    for (size_t i = 0; i < height; i++){
+        for (size_t j = 0; j < width; j++){
+
+            // P2 format (ascii)
+            // if (!isP5) pixels[height - i - 1][j] = readDecimal(dataPtr);
+
+            // P5 format (binary)
+            //else{
+            if (oneByte){
+                uint8_t val = pixels[height - i - 1][j];
+                fprintf(out, "%c", val);
+            } else {
+                uint8_t val_right = (uint8_t)((pixels[height - i - 1][j]) & 0x00FF);
+                uint8_t val_left = (uint8_t)(((pixels[height - i - 1][j]) & 0xFF00) >> 8);
+                fprintf(out, "%c%c", val_left, val_right);
+            }
+            //}
+
+        }
+    }
+    fclose(out);
+}
+
+int main() {
+    uint16_t** pixels;
+    uint16_t maxValue;
+    uint16_t width;
+    uint16_t height;
+    loadPGM("pgm/tp1_floor1.pgm", pixels, maxValue, width, height);
+    makePGM("test.pgm", pixels, maxValue, width, height);
 }
