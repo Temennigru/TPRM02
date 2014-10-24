@@ -34,9 +34,9 @@ public:
 
     // Finds a path between two points using the visibility graph
     void findPath(
-		uint16_t srcX, uint16_t srcY,
-		uint16_t * &x, uint16_t * &y, uint16_t &cnt
-    );
+    	float srcX, float srcY,
+    	float * &x, float * &y, size_t &cnt
+	);
 };
 
 #endif /* defined(__TPRM01__RRT__) */

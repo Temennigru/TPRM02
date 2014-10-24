@@ -6,6 +6,7 @@
 #include "../Graph/OccupancyGrid.h"
 #include "../Graph/RRT.h"
 #include <list>
+#include <float.h>
 
 // Position of the robot
 volatile double originX;
@@ -23,10 +24,10 @@ void odomCallback(const nav_msgs::Odometry &msg){
 OccupancyGrid_t * grid;
 const float rayInc = 0.2;
 void laserCallback(const sensor_msgs::LaserScan &msg){	
-
+	
 	// Iterate over each ray, and increment hit/miss grid allong its path 	
 	size_t idx = 0;
-	for(float phi = msg.angle_min; phi <= msg.angle_max; phi += msg.angle_increment){ 
+	for(float phi = msg.angle_min + theta; phi <= msg.angle_max + theta; phi += msg.angle_increment){ 
 
 		float laserDist = msg.ranges[idx];
 		if(laserDist <= msg.range_min){
@@ -35,19 +36,21 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 		}	
 
 		// Compute the target x and y
-		size_t dstX, dstY;
-		if(laserDist >= msg.range_max) dstX = dstY = (size_t)-1;
+		float dstX, dstY;
+		if(laserDist >= msg.range_max) dstX = dstY = FLT_MAX;
 		else{
-			dstX = (size_t) (px + msg.ranges[idx]*cos(phi));
-			dstY = (size_t) (py + msg.ranges[idx]*sin(phi));
+			dstX = px + msg.ranges[idx]*cos(phi);
+			dstY = py + msg.ranges[idx]*sin(phi);
 		}
 
 		/* Runs through all points allong the ray; 
 		   Points are incremented roughly proportionally to the size of the intersect between the ray and the cell */
 		for(float r = 0; r < laserDist; r += rayInc){
-			size_t x = px + r*cos(phi);
-			size_t y = py + r*sin(phi);
-			grid->informOccupancy(x, y, x == dstX && y == dstY); 		
+			float x = px + r*cos(phi);
+			float y = py + r*sin(phi);
+			bool occupied = pow(x - dstX, 2) + pow(y - dstY, 2) < 0.05*0.05;
+			//printf("%f %f (%f %f) %i\n", x, y, dstX, dstY, occupied);
+			grid->informOccupancy(x, y, occupied); 		
 		}		
 		idx++;
 	}
@@ -59,7 +62,8 @@ void printFormatAndExit(void){
 	exit(-1);
 }
 int main(int argc, char **argv){
-
+	srand((int)time(NULL));
+	
 	// Sanitize inputs
 	//      Label inputs
 	const char * argOriginX = argv[1];
@@ -94,7 +98,7 @@ int main(int argc, char **argv){
 
 	// Create OccupancyGrid
 	grid = new OccupancyGrid_t(maxX, maxY);
-
+	
 	// Create stage velocity publisher, odometry listener, command listener and, if diffbot, laser listener
 	ros::Publisher cmdVelPub = n.advertise<geometry_msgs::Twist>("cmd_vel", 10); 
 	ros::Subscriber stageOdoSub = n.subscribe("odom", 10, &odomCallback);
@@ -111,11 +115,13 @@ int main(int argc, char **argv){
 	printf("Got initial position (%lf, %lf, %lf)\n", px, py, theta);
 
 	// Do full circle in the vicinity of the robot in order to establish sorroundings
+	printf("Doing a full circle to get initial bearings...\n");
 	for(int repeat = 0; repeat < 2; repeat++){
-		float lastTheta = theta;
+		float goalTheta = theta + ((theta < 0) ? M_PI : -M_PI);
 		while(ros::ok()){
-			
-			if(lastTheta > theta) break;		
+		
+			const float epsilon = 0.1;
+			if(goalTheta - epsilon < theta && theta < goalTheta + epsilon) break;
 
 			geometry_msgs::Twist cmdvel;
 			cmdvel.angular.z = 1;
@@ -125,33 +131,36 @@ int main(int argc, char **argv){
 			loop_rate.sleep();
 		}
 	}
+			
+	// Generate a print of the visual field
+	grid->exportPGM("/home/viki/catkin_ws/src/tp2/initial.pgm", true);
 
 	// Main scan-path-repeat loop		
+	printf("Starting search...\n");
 	//       Error computation	
-	uint16_t * pathx, * pathy;
-	uint16_t pathi = 0, pathSize = 0;
+	float * pathx, * pathy;
+	size_t pathi = 0, pathSize = 0;
 	float goalTheta;	
 	while (ros::ok()){	
 
-		printf("path: %i(%i)\n", pathi, pathSize);
+		//printf("path: %i(%i)\n", pathi, pathSize);
 
 		// Check if the target of the current path has been reached, if so, make a new one
-		if(pathi == pathSize){
-	
-			putchar('.');			
+		if(pathi == pathSize){			
 
 			// Status message informing the end of the current exploration
 			if(pathSize != 0){
-				printf("Finished exploring (%i, %i)\n", pathx[pathSize - 1], pathy[pathSize - 1]);
+				printf("Finished exploring (%f, %f)\n", pathx[pathSize - 1], pathy[pathSize - 1]);
 				free(pathx);
 				free(pathy);
 			}			
 
 			// Compute a new path to a cell that is reachable and unknown
 			RRT_t RRT(grid);
-			RRT.findPath((uint16_t)px, (uint16_t)py, pathx, pathy, pathSize);
+			RRT.findPath(px, py, pathx, pathy, pathSize);
+			printf("Setting new path:\n");			
 			for(size_t i = 0; i < pathSize; i++){
-				printf("%zu\t%i %i\n", i, (int)pathx[i], (int)pathy[i]);		
+				printf("%zu\t%f %f\n", i, pathx[i], pathy[i]);
 			}			
 			assert(pathSize > 0 && "Expected RRT path with at least a destination!");			
 			pathi = 0;
@@ -160,7 +169,7 @@ int main(int argc, char **argv){
 			else goalTheta = atan(((float)pathy[pathSize] - (float)py)/((float)pathx[pathSize - 1] - (float)px));
 			
 			// Status message informing the start of a new exploration
-			printf("Started exploring (%i, %i)\n", pathx[pathSize], pathy[pathSize]);
+			printf("Started exploring (%f, %f)\n", pathx[pathSize], pathy[pathSize]);
 			
 		} else{		
 
@@ -171,6 +180,8 @@ int main(int argc, char **argv){
 			
 			// Check if the new error is within acceptible bounds, if so, load the next goal
 			if(ex*ex + ey*ey < sensitivity*sensitivity && (pathi != pathSize - 1 || fabs(etheta) < 45*M_PI/180)){
+
+				printf("Reached goal (%f, %f)\n", pathx[pathi], pathy[pathi]);
 				pathi++;
 				
 			// Otherwise, update velocities		
