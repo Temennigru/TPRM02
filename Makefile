@@ -4,6 +4,8 @@ all:
 	catkin_make
 
 clean:
+	cd $(HOME)/catkin_ws; \
+	catkin_make clean
 	rm -rf $(HOME)/catkin_ws/src/tp2
 	echo "Cleanup complete!"
 
