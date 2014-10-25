@@ -14,7 +14,7 @@ class OccupancyGrid_t{
 	size_t w;
 	size_t h;
 	
-	const float padding = 0.5;
+	const float padding = 0.1;
 	bool isOpaque(double x, double y){
 		return getOccupancyProbability(y, x) >= occupancyThreshold;
 	}

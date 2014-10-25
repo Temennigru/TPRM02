@@ -6,13 +6,14 @@
 #include <set>
 #include <queue>
 #include <iostream>
+#include <assert.h>
 #include "Graph2D.h"
 
 namespace graph2D{
 
-    class nodeGreater : public std::binary_function<std::pair<node_t_ptr, int>, std::pair<node_t_ptr, int>, bool> {
+    class nodeGreater : public std::binary_function<std::pair<node_t_ptr, nodeValue_t>, std::pair<node_t_ptr, nodeValue_t>, bool> {
     public:
-        bool operator() (const std::pair<node_t_ptr, int>& x, const std::pair<node_t_ptr, int>& y) const {return x.first->cost > y.first->cost;;}
+        bool operator() (const std::pair<node_t_ptr, nodeValue_t>& x, const std::pair<node_t_ptr, nodeValue_t>& y) const {return x.first->cost > y.first->cost;;}
     };
 
     class Frontier {
@@ -77,7 +78,7 @@ namespace graph2D{
 
         while (!frontier.empty()) {
 
-            std::pair<node_t_ptr, int> dataPair = frontier.pop();
+            std::pair<node_t_ptr, nodeValue_t> dataPair = frontier.pop();
             node_t_ptr node = dataPair.first;
 
 			// Skips this node if it has already been visited
@@ -99,6 +100,8 @@ namespace graph2D{
                 }
             }
         }
+
+		assert(false && "A* was unable to find a solution!");
 
 	}
 

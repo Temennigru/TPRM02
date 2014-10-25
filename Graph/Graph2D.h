@@ -10,11 +10,13 @@
 
 namespace graph2D{
 
+	typedef float nodeValue_t;
+
 	// A node in the graph
 	struct node_t {
 		
 		// Node properties
-		size_t x, y;
+		nodeValue_t x, y;
 		std::set<node_t*> adj;
 
 		// Search auxiliaries

@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cfloat>
 #include <algorithm>
+#include "PGM.h"
 
 class OccupancyGrid_t{
 
@@ -13,31 +14,36 @@ class OccupancyGrid_t{
 	size_t ** misses;
 	size_t w;
 	size_t h;
-	
-	const float padding = 0.5;
-	bool isOpaque(double x, double y){
-		return getOccupancyProbability(y, x) >= occupancyThreshold;
+	size_t scale;
+
+	#define PADDING 0.5
+	float padding;
+	bool isOpaque(float x, float y){
+		float occupancyProb = getOccupancyProbability(x, y);
+		if(occupancyProb >= occupancyThreshold) return true;
+		//else if(occupancyProb < 0) return true;
+		else return false;
 	}
 
 public:
 
 	// Constructor/Destructor
-	OccupancyGrid_t(const size_t w, const size_t h, const float occupancyThreshold = 0.20) : w(w), h(h) {
-	
+	OccupancyGrid_t(const size_t w, const size_t h, const size_t scale = 4, const float occupancyThreshold = 0.20) : w(w), h(h), scale(scale), padding(PADDING) {
+		
 		// Ensure the occupancy threshold is within acceptable values
 		assert(occupancyThreshold > 0 && occupancyThreshold <= 1 && "Occupancy must be greater than 0, and less or equal to 1!");
 		this->occupancyThreshold = occupancyThreshold;
 		
 		// Allocate hit/miss array
-		hits = (size_t**)malloc(h*sizeof(size_t*));
-		misses = (size_t**)malloc(h*sizeof(size_t*));
-		for(size_t i = 0; i < h; i++){
-			hits[i] = (size_t*)calloc(w, sizeof(size_t));
-			misses[i] = (size_t*)calloc(w, sizeof(size_t));
+		hits = (size_t**)malloc(h*scale*sizeof(size_t*));
+		misses = (size_t**)malloc(h*scale*sizeof(size_t*));
+		for(size_t i = 0; i < h*scale; i++){
+			hits[i] = (size_t*)calloc(w*scale, sizeof(size_t));
+			misses[i] = (size_t*)calloc(w*scale, sizeof(size_t));
 		}		
 	}
 	~OccupancyGrid_t(void){
-		for(size_t i = 0; i < h; i++){
+		for(size_t i = 0; i < h*scale; i++){
 			free(hits[i]);
 			free(misses[i]);
 		}
@@ -46,18 +52,36 @@ public:
 	}
 
 	// Get the probability that a cell is unocupied (returns -1.0 if it is unknown); 1 is totally occupied, 0 is unocupied
-	float getOccupancyProbability(size_t row, size_t col){
-		assert(row < h && col < w && "Referenced position must be within bounds!");
-		size_t count = hits[row][col] + misses[row][col];
+	float getOccupancyProbability(float col, float row){
+		assert((size_t) (row*scale) < h*scale && (size_t) (col*scale) < w*scale && "Referenced position must be within bounds!");
+		size_t hcnt = hits[(size_t) (row*scale)][(size_t) (col*scale)];
+		size_t mcnt = misses[(size_t) (row*scale)][(size_t) (col*scale)];
+		size_t count = hcnt + mcnt;
 		if(count == 0) return -1.0;
-		else return hits[row][col]/count;
+		else return ((float)hcnt)/count;
 	}
 
 	// Returns true if there are no obstacles between the source and the destination
-	bool isUnobstructed(size_t srcX, size_t srcY, size_t dstX, size_t dstY){
-		float tan = (float)(dstY - srcY)/(dstX - srcX);
+	bool isUnobstructed(float srcX, float srcY, float dstX, float dstY){
+		
+		const float dist = sqrt((dstX - srcX)*(dstX - srcX) + (dstY - srcY)*(dstY - srcY));
+		const float dx = 2*padding*(dstX - srcX)/dist;
+		const float dy = 2*padding*(dstY - srcY)/dist;
+	
 		float x = srcX, y = srcY;
-		while((size_t)x != dstX && (size_t)y != dstY){
+		const float epsilon = std::min(dx, dy)/2.0;
+		while((dx < 0 && x > dstX) || (dx >= 0 && x < dstX) || (dy < 0 && y > dstY) || (dy >= 0 && y < dstY)){
+			if(!isUnocupied(x, y)) return false;
+			x += dx;
+			y += dy;
+			//printf("asdf\n");
+		}
+		return true;
+
+		/*float tan = (float)(dstY - srcY)/(dstX - srcX);
+		float x = srcX, y = srcY;
+		const float epsilon = 0.1;
+		while(fabs(x - dstX) < epsilon && fabs(y - dstY) < epsilon){
 			if(!isUnocupied(x, y)) return false;
 			float x_dx = floor(x + 1) - x, x_dy = x_dx*tan;
 			float y_dy = floor(y + 1) - y, y_dx = y_dy/tan;
@@ -76,15 +100,16 @@ public:
 				x += y_dx;
 				y += y_dy;			
 			}
-		}				
+		}*/				
 		return true;			
 	}
 
-	// Returns true if the referenced position is known to be unocupied 
-	bool isUnocupied(double x, double y){
-		for(size_t px = (size_t)std::max<double>(x - padding, 0.0); px < std::min<double>(x + padding, w); px++){
-			for(size_t py = (size_t)std::max<double>(y - padding, 0.0); py < std::min<double>(y + padding, h); py++){
-				if((px - x)*(px - x) + (py - y)*(py - y) < padding) continue;
+	// Returns true if the referenced position is known to be unocupied within a certain padding
+	bool isUnocupied(float x, float y){
+		for(float px = std::max<float>(x - padding, 0.0); px < std::min<float>(x + padding, w); px += 1.0/scale){
+			for(float py = std::max<float>(y - padding, 0.0); py < std::min<float>(y + padding, h); py += 1.0/scale){
+				if(sqrt((px - x)*(px - x) + (py - y)*(py - y)) > padding) continue;
+				assert(px >= 0 && py >= 0 && "Generated values must be positive!");				
 				if(isOpaque(px, py)) return false;			
 			}
 		}
@@ -92,10 +117,10 @@ public:
 	}
 
 	// Records a cell as occupied or unoccupied
-	void informOccupancy(size_t x, size_t y, bool occupied){
-		if(x < w && y < h){
-			if(occupied) hits[y][x]++;
-			else misses[y][x]++;
+	void informOccupancy(float x, float y, bool occupied){
+		if((size_t)(x*scale) < w*scale && (size_t)(y*scale) < h*scale){
+			if(occupied) hits[(size_t) (y*scale)][(size_t) (x*scale)]++;
+			else misses[(size_t) (y*scale)][(size_t) (x*scale)]++;
 		}
 	}
 
@@ -104,6 +129,42 @@ public:
 
     size_t getWidth(void) { return w; }
     size_t getHeight(void) { return h; }
+
+	// Exports the visibility to a PGM
+	void exportPGM(const char * FName, bool includePadding = false){
+		uint16_t ** pixels = (uint16_t**) malloc(h*scale*sizeof(uint16_t*));
+		for(size_t i = 0; i < h*scale; i++) pixels[i] = (uint16_t*)malloc(w*scale*sizeof(uint16_t));	
+		for(size_t y = 0; y < h*scale; y++){
+			for(size_t x = 0; x < w*scale; x++){
+				if(includePadding) pixels[y][x] = isUnocupied((float)x/scale, (float)y/scale);
+				else pixels[y][x] = isOpaque((float)x/scale, (float)y/scale);
+				printf("%i", pixels[y][x]);		
+			}
+			printf("\n");
+		}
+		
+		FILE * test = fopen("/home/viki/catkin_ws/src/tp2/test.txt", "wt");
+		fprintf(test, "hello!");
+		fclose(test);
+
+		/*printf("hits:\n");
+		for(size_t y = 0; y < h*scale; y++){
+			for(size_t x = 0; x < w*scale; x++){
+				printf("%i", hits[y][x] > 0);
+			}
+			printf("\n");		
+		}
+		printf("misses:\n");
+		for(size_t y = 0; y < h*scale; y++){
+			for(size_t x = 0; x < w*scale; x++){
+				printf("%i", misses[y][x] > 0);
+			}
+			printf("\n");		
+		}*/
+		makePGM(FName, pixels, 1, w*scale, h*scale);
+		for(size_t i = 0; i < h*scale; i++) free(pixels[i]);
+		free(pixels);
+	}
 };
 
 #endif

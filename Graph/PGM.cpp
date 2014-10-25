@@ -183,11 +183,12 @@ void makePGM(const char * FName, uint16_t ** pixels, uint16_t maxValue, uint16_t
     fclose(out);
 }
 
-int main() {
+// [DEBUG] Test out PGM
+/*int main() {
     uint16_t** pixels;
     uint16_t maxValue;
     uint16_t width;
     uint16_t height;
     loadPGM("pgm/tp1_floor1.pgm", pixels, maxValue, width, height);
     makePGM("test.pgm", pixels, maxValue, width, height);
-}
+}*/
