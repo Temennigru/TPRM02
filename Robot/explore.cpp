@@ -21,10 +21,14 @@ void odomCallback(const nav_msgs::Odometry &msg){
 }
 
 // Occupancy Grid Update
+bool isStopped = false;
 OccupancyGrid_t * grid;
 const float rayInc = 0.2;
 void laserCallback(const sensor_msgs::LaserScan &msg){	
 	
+	// If the robot is moving, do not trust its laser
+	if(!isStopped) return;	
+
 	// Iterate over each ray, and increment hit/miss grid allong its path 	
 	size_t idx = 0;
 	for(float phi = msg.angle_min + theta; phi <= msg.angle_max + theta; phi += msg.angle_increment){ 
@@ -53,6 +57,55 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 			grid->informOccupancy(x, y, occupied); 		
 		}		
 		idx++;
+	}
+}
+
+
+// Rotate in position until all points in a radius are either scanned or unknown
+void stopAndScan(OccupancyGrid_t * grid, ros::Publisher * cmdvelPub){
+	ros::Rate loop_rate(10);
+	const float rotateAngle = M_PI;
+	const float scanDist = 3;
+	const float scanAngle = M_PI/180;
+	float goalTheta = theta + ((theta < 0) ? M_PI : -M_PI);
+		
+	while(ros::ok()){
+
+		// Check if we are done scanning
+		//printf("%s %i\n", __FILE__, __LINE__);
+		bool doneScanning = true;
+		for(float a = 0; a < 2*M_PI && doneScanning; a += scanAngle){
+			float dstX = std::max<float>(std::min<float>(scanDist*cos(a), 25), 0);	
+			float dstY = std::max<float>(std::min<float>(scanDist*sin(a), 25), 0);	
+			doneScanning = !grid->intersectsUnknown(px, py, dstX, dstY);
+		}			
+		//printf("%s %i\n", __FILE__, __LINE__);
+		if(doneScanning) {
+			//printf("doneScanning\n");
+			//getchar();
+			break;
+		}
+		// If not, rotate by rotateAngle
+		const float epsilon = 5*M_PI/180;
+		float goalTheta = theta + rotateAngle;
+		if(goalTheta > M_PI) goalTheta -= 2*M_PI;			
+		while(fabs(goalTheta - theta) > epsilon){
+			geometry_msgs::Twist cmdvel;
+			cmdvel.angular.z = 1;
+			cmdvelPub->publish(cmdvel);
+			ros::spinOnce();
+			loop_rate.sleep();
+		}
+
+		// Wait a bit for the laser to scan the environment
+		isStopped = true;
+		for(size_t i = 0; i < 100; i++){
+			geometry_msgs::Twist cmdvel;
+			cmdvelPub->publish(cmdvel);
+			ros::spinOnce();
+			loop_rate.sleep();
+		}
+		isStopped = false;
 	}
 }
 
@@ -115,22 +168,7 @@ int main(int argc, char **argv){
 	printf("Got initial position (%lf, %lf, %lf)\n", px, py, theta);
 
 	// Do full circle in the vicinity of the robot in order to establish sorroundings
-	printf("Doing a full circle to get initial bearings...\n");
-	for(int repeat = 0; repeat < 2; repeat++){
-		float goalTheta = theta + ((theta < 0) ? M_PI : -M_PI);
-		while(ros::ok()){
-		
-			const float epsilon = 0.1;
-			if(goalTheta - epsilon < theta && theta < goalTheta + epsilon) break;
-
-			geometry_msgs::Twist cmdvel;
-			cmdvel.angular.z = 1;
-			cmdVelPub.publish(cmdvel);
-			
-			ros::spinOnce();
-			loop_rate.sleep();
-		}
-	}
+	//printf("Doing a full circle to get initial bearings...\n");
 	
 	// Generate a print of the visual field
 	grid->exportPGM("/home/viki/catkin_ws/src/tp2/initial.pgm", true);
@@ -153,6 +191,11 @@ int main(int argc, char **argv){
 		if(pathi == pathSize){
 
 			grid->exportPGM("/home/viki/catkin_ws/src/tp2/initial.pgm", true);		
+
+
+			// Scan arround the surroundings
+			stopAndScan(grid, &cmdVelPub);
+	
 
 			// Status message informing the end of the current exploration
 			if(pathSize != 0){
@@ -198,7 +241,7 @@ int main(int argc, char **argv){
 				geometry_msgs::Twist cmdvel;
 				cmdvel.linear.x = 0;
 				cmdvel.linear.y = 0;
-				cmdvel.angular.z = P*etheta;
+				cmdvel.angular.z = 0.02;//P*etheta;
 				while(fabs(theta - pathTheta[pathi]) < 0.01){
 					cmdVelPub.publish(cmdvel);					
 					ros::spinOnce();

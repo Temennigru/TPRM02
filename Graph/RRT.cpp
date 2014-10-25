@@ -41,29 +41,26 @@ bool RRT_t::addNode(graph2D::node_t * &dst){
         printf("%f %f -> %f %f", node->x, node->y, closest_node->x, closest_node->y);
 		node->x = (graph2D::nodeValue_t)( ( (node->x - closest_node->x) / sqrt(graph2D::sqdistance(node, closest_node))) * MAX_DIST) + closest_node->x;
         node->y = (graph2D::nodeValue_t)( ( (node->y - closest_node->y) / sqrt(graph2D::sqdistance(node, closest_node))) * MAX_DIST) + closest_node->y;
-        printf(" (%f %f)\n", node->x, node->y);
+        //printf(" (%f %f)\n", node->x, node->y);
 		assert(node->x >= 0.0 && node->y >= 0.0 && "Generated point must be within positive bounds!");
     }
 
-    // Check visibility to closest node
-	bool visible = restrictions->isUnobstructed(node->x, node->y, closest_node->x, closest_node->y);	
-
-    // Add the edge and insert the node if there is visibility between the two edges
-    if (visible) {
+    // If the node is visible, add it as a connecting node
+    if (restrictions->isUnobstructed(closest_node->x, closest_node->y, node->x, node->y)) {
 		graph2D::addEdge(closest_node, node);
-            
-		printf("%f %f can see %f %f\n", node->x, node->y, closest_node->x, closest_node->y);
-
-        /* Otherwise, the node is after the final frontier (unkown)
-		 * It may be unreachable, but if it is, and visible is true, then it is because 
-		 * of another unknown cell, which is just as good */   
         G.push_back(node);
-		if (restrictions->getOccupancyProbability(node->x, node->y) == -1.0 ) { 
-			dst = node;
-			return true;
-		}
-    } else delete node;
-    return false;
+		return false;
+	// Otherwise, if the intersecting node is an unknown point, then use it as a destination
+    } else if (restrictions->intersectsUnknown(closest_node->x, closest_node->y, node->x, node->y)){
+		graph2D::addEdge(closest_node, node);
+        G.push_back(node);
+		dst = node;
+		return true;
+	// If neither is the case, the intersect is with a wall, so don't add the edge
+	} else{
+		delete node;
+		return false;
+	}
 }
 
 // Constructor/Destructor

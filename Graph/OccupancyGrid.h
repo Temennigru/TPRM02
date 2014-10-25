@@ -16,19 +16,19 @@ class OccupancyGrid_t{
 	size_t h;
 	size_t scale;
 
-	#define PADDING 0.5
+	#define PADDING 0.9
 	float padding;
 	bool isOpaque(float x, float y){
 		float occupancyProb = getOccupancyProbability(x, y);
 		if(occupancyProb >= occupancyThreshold) return true;
-		//else if(occupancyProb < 0) return true;
+		else if(occupancyProb < 0) return true;
 		else return false;
 	}
 
 public:
 
 	// Constructor/Destructor
-	OccupancyGrid_t(const size_t w, const size_t h, const size_t scale = 4, const float occupancyThreshold = 0.20) : w(w), h(h), scale(scale), padding(PADDING) {
+	OccupancyGrid_t(const size_t w, const size_t h, const size_t scale = 5, const float occupancyThreshold = 0.05) : w(w), h(h), scale(scale), padding(PADDING) {
 		
 		// Ensure the occupancy threshold is within acceptable values
 		assert(occupancyThreshold > 0 && occupancyThreshold <= 1 && "Occupancy must be greater than 0, and less or equal to 1!");
@@ -100,8 +100,25 @@ public:
 				x += y_dx;
 				y += y_dy;			
 			}
-		}*/				
-		return true;			
+		}		
+		return true;*/
+	}
+
+	// Returns true if the first obstacle between the source and the destination is an unknown cell
+	bool intersectsUnknown(float srcX, float srcY, float dstX, float dstY){
+		const float dist = sqrt((dstX - srcX)*(dstX - srcX) + (dstY - srcY)*(dstY - srcY));
+		const float dx = /*2*padding*/0.3*(dstX - srcX)/dist;
+		const float dy = /*2*padding*/0.3*(dstY - srcY)/dist;
+	
+		float x = srcX, y = srcY;
+		const float epsilon = std::min(dx, dy)/2.0;
+		while((dx < 0 && x > dstX) || (dx >= 0 && x <= dstX) || (dy < 0 && y > dstY) || (dy >= 0 && y <= dstY)){
+			if(getOccupancyProbability(x,y) < 0) return true;
+			else if(isOpaque(x, y)) return false;
+			x += dx;
+			y += dy;
+		}
+		return false;
 	}
 
 	// Returns true if the referenced position is known to be unocupied within a certain padding
