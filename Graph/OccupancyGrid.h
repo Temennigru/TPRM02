@@ -16,18 +16,19 @@ class OccupancyGrid_t{
 	size_t h;
 	size_t scale;
 
-	const float padding = 0.25;
+	#define PADDING 0.5
+	float padding;
 	bool isOpaque(float x, float y){
 		float occupancyProb = getOccupancyProbability(x, y);
 		if(occupancyProb >= occupancyThreshold) return true;
-		else if(occupancyProb < 0) return true;
+		//else if(occupancyProb < 0) return true;
 		else return false;
 	}
 
 public:
 
 	// Constructor/Destructor
-	OccupancyGrid_t(const size_t w, const size_t h, const size_t scale = 4, const float occupancyThreshold = 0.20) : w(w), h(h), scale(scale) {
+	OccupancyGrid_t(const size_t w, const size_t h, const size_t scale = 4, const float occupancyThreshold = 0.20) : w(w), h(h), scale(scale), padding(PADDING) {
 		
 		// Ensure the occupancy threshold is within acceptable values
 		assert(occupancyThreshold > 0 && occupancyThreshold <= 1 && "Occupancy must be greater than 0, and less or equal to 1!");
@@ -57,15 +58,30 @@ public:
 		size_t mcnt = misses[(size_t) (row*scale)][(size_t) (col*scale)];
 		size_t count = hcnt + mcnt;
 		if(count == 0) return -1.0;
-		else return (float)hcnt/count;
+		else return ((float)hcnt)/count;
 	}
 
 	// Returns true if there are no obstacles between the source and the destination
 	bool isUnobstructed(float srcX, float srcY, float dstX, float dstY){
-		float tan = (float)(dstY - srcY)/(dstX - srcX);
+		
+		const float dist = sqrt((dstX - srcX)*(dstX - srcX) + (dstY - srcY)*(dstY - srcY));
+		const float dx = 2*padding*(dstX - srcX)/dist;
+		const float dy = 2*padding*(dstY - srcY)/dist;
+	
+		float x = srcX, y = srcY;
+		const float epsilon = std::min(dx, dy)/2.0;
+		while((dx < 0 && x > dstX) || (dx >= 0 && x < dstX) || (dy < 0 && y > dstY) || (dy >= 0 && y < dstY)){
+			if(!isUnocupied(x, y)) return false;
+			x += dx;
+			y += dy;
+			//printf("asdf\n");
+		}
+		return true;
+
+		/*float tan = (float)(dstY - srcY)/(dstX - srcX);
 		float x = srcX, y = srcY;
 		const float epsilon = 0.1;
-		while(fabs(x - dstX) < epsilon && fabs(y - dstY)){
+		while(fabs(x - dstX) < epsilon && fabs(y - dstY) < epsilon){
 			if(!isUnocupied(x, y)) return false;
 			float x_dx = floor(x + 1) - x, x_dy = x_dx*tan;
 			float y_dy = floor(y + 1) - y, y_dx = y_dy/tan;
@@ -84,7 +100,7 @@ public:
 				x += y_dx;
 				y += y_dy;			
 			}
-		}				
+		}*/				
 		return true;			
 	}
 
@@ -92,7 +108,7 @@ public:
 	bool isUnocupied(float x, float y){
 		for(float px = std::max<float>(x - padding, 0.0); px < std::min<float>(x + padding, w); px += 1.0/scale){
 			for(float py = std::max<float>(y - padding, 0.0); py < std::min<float>(y + padding, h); py += 1.0/scale){
-				if((px - x)*(px - x) + (py - y)*(py - y) > padding) continue;
+				if(sqrt((px - x)*(px - x) + (py - y)*(py - y)) > padding) continue;
 				assert(px >= 0 && py >= 0 && "Generated values must be positive!");				
 				if(isOpaque(px, py)) return false;			
 			}

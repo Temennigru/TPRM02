@@ -18,7 +18,7 @@
 // Adds a node to the graph, computing it's visibility towards all other nodes already in the graph
 // Return if found dst
 bool RRT_t::addNode(graph2D::node_t * &dst){
-
+	
 	// Randomply generates a new candidate node
     graph2D::node_t_ptr node = new graph2D::node_t();
     node->x = (graph2D::nodeValue_t)((float)rand()/RAND_MAX)*restrictions->getWidth();
@@ -37,9 +37,12 @@ bool RRT_t::addNode(graph2D::node_t * &dst){
     };
 
     // Fix distance
-    if (min_dist > MAX_DIST) {
-        node->x = (graph2D::nodeValue_t)( ( (node->x - closest_node->x) / sqrt(graph2D::sqdistance(node, closest_node))) * MAX_DIST) + closest_node->x;
+    if (min_dist > SQ_MAX_DIST) {
+        printf("%f %f -> %f %f", node->x, node->y, closest_node->x, closest_node->y);
+		node->x = (graph2D::nodeValue_t)( ( (node->x - closest_node->x) / sqrt(graph2D::sqdistance(node, closest_node))) * MAX_DIST) + closest_node->x;
         node->y = (graph2D::nodeValue_t)( ( (node->y - closest_node->y) / sqrt(graph2D::sqdistance(node, closest_node))) * MAX_DIST) + closest_node->y;
+        printf(" (%f %f)\n", node->x, node->y);
+		assert(node->x >= 0.0 && node->y >= 0.0 && "Generated point must be within positive bounds!");
     }
 
     // Check visibility to closest node
@@ -51,18 +54,15 @@ bool RRT_t::addNode(graph2D::node_t * &dst){
             
 		printf("%f %f can see %f %f\n", node->x, node->y, closest_node->x, closest_node->y);
 
-		// If the position found has already been explored, add it to the graph-vector
-        if (restrictions->getOccupancyProbability(node->x, node->y) != -1.0 ) { 
-            G.push_back(node);
         /* Otherwise, the node is after the final frontier (unkown)
 		 * It may be unreachable, but if it is, and visible is true, then it is because 
 		 * of another unknown cell, which is just as good */   
-		} else{
+        G.push_back(node);
+		if (restrictions->getOccupancyProbability(node->x, node->y) == -1.0 ) { 
 			dst = node;
 			return true;
 		}
     } else delete node;
-
     return false;
 }
 

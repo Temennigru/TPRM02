@@ -49,7 +49,7 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 			float x = px + r*cos(phi);
 			float y = py + r*sin(phi);
 			bool occupied = pow(x - dstX, 2) + pow(y - dstY, 2) < 0.05*0.05;
-			//printf("%f %f (%f %f) %i\n", x, y, dstX, dstY, occupied);
+			//sprintf("theta = %f ; phi %f ; r = %f ; %f %f (%f %f) %i\n", theta, phi, laserDist, x, y, dstX, dstY, occupied);
 			grid->informOccupancy(x, y, occupied); 		
 		}		
 		idx++;
@@ -62,7 +62,7 @@ void printFormatAndExit(void){
 	exit(-1);
 }
 int main(int argc, char **argv){
-	srand((int)time(NULL));
+	//srand((int)time(NULL));
 	
 	// Sanitize inputs
 	//      Label inputs
@@ -126,27 +126,33 @@ int main(int argc, char **argv){
 			geometry_msgs::Twist cmdvel;
 			cmdvel.angular.z = 1;
 			cmdVelPub.publish(cmdvel);
-
+			
 			ros::spinOnce();
 			loop_rate.sleep();
 		}
 	}
-			
+	
 	// Generate a print of the visual field
 	grid->exportPGM("/home/viki/catkin_ws/src/tp2/initial.pgm", true);
 
 	// Main scan-path-repeat loop		
 	printf("Starting search...\n");
 	//       Error computation	
-	float * pathx, * pathy;
+	float * pathx, * pathy, * pathTheta;
 	size_t pathi = 0, pathSize = 0;
 	float goalTheta;	
-	while (ros::ok()){	
+	while (ros::ok()){
+
+		if (pathi != pathSize && !grid->isUnobstructed(px, py, pathx[pathi], pathy[pathi])){
+			pathi = pathSize;			
+		}	
 
 		//printf("path: %i(%i)\n", pathi, pathSize);
 
 		// Check if the target of the current path has been reached, if so, make a new one
-		if(pathi == pathSize){			
+		if(pathi == pathSize){
+
+			grid->exportPGM("/home/viki/catkin_ws/src/tp2/initial.pgm", true);		
 
 			// Status message informing the end of the current exploration
 			if(pathSize != 0){
@@ -165,8 +171,13 @@ int main(int argc, char **argv){
 			assert(pathSize > 0 && "Expected RRT path with at least a destination!");			
 			pathi = 0;
 			pathSize--;			
-			if(pathSize > 0) goalTheta = atan(((float)pathy[pathSize] - (float)pathy[pathSize - 1])/((float)pathx[pathSize] - (float)pathx[pathSize - 1]));
-			else goalTheta = atan(((float)pathy[pathSize] - (float)py)/((float)pathx[pathSize - 1] - (float)px));
+			
+
+			// Compute theta allong the trajectory
+			pathTheta = (float*)malloc(pathSize*sizeof(float));			
+			for(size_t i = 0; i < pathSize; i++){
+				pathTheta[i] = atan(((float)pathy[i+1] - (float)pathy[i])/((float)pathx[i+1] - (float)pathx[i]));
+			}
 			
 			// Status message informing the start of a new exploration
 			printf("Started exploring (%f, %f)\n", pathx[pathSize], pathy[pathSize]);
@@ -179,10 +190,23 @@ int main(int argc, char **argv){
 			float etheta = goalTheta - theta;
 			
 			// Check if the new error is within acceptible bounds, if so, load the next goal
-			if(ex*ex + ey*ey < sensitivity*sensitivity && (pathi != pathSize - 1 || fabs(etheta) < 45*M_PI/180)){
+			if(ex*ex + ey*ey < sensitivity*sensitivity /*&& (pathi != pathSize - 1 || fabs(etheta) < 45*M_PI/180)*/){
 
 				printf("Reached goal (%f, %f)\n", pathx[pathi], pathy[pathi]);
-				pathi++;
+
+				// Wait for the robot to catch up with where we are going
+				geometry_msgs::Twist cmdvel;
+				cmdvel.linear.x = 0;
+				cmdvel.linear.y = 0;
+				cmdvel.angular.z = P*etheta;
+				while(fabs(theta - pathTheta[pathi]) < 0.01){
+					cmdVelPub.publish(cmdvel);					
+					ros::spinOnce();
+					loop_rate.sleep();
+				}
+				
+				// Load next destination, unless we discovered an obstruction				
+				pathi++;				
 				
 			// Otherwise, update velocities		
 			} else {
@@ -199,7 +223,7 @@ int main(int argc, char **argv){
 				geometry_msgs::Twist cmdvel;
 				cmdvel.linear.x = local_velX;
 				cmdvel.linear.y = local_velY;
-				cmdvel.angular.z = P*etheta;
+				//cmdvel.angular.z = P*etheta;
 				
 				//printf("theta: %lf; goalTheta: %lf; etheta: %lf\n", theta, goalTheta, etheta);
 				printf("x: %lf(%lf), y: %lf(%lf), theta: %lf(%f)\n", px, (double)pathx[pathi], py, (double)pathy[pathi], theta, goalTheta);

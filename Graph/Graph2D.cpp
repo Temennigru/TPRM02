@@ -6,6 +6,7 @@
 #include <set>
 #include <queue>
 #include <iostream>
+#include <assert.h>
 #include "Graph2D.h"
 
 namespace graph2D{
@@ -99,6 +100,8 @@ namespace graph2D{
                 }
             }
         }
+
+		assert(false && "A* was unable to find a solution!");
 
 	}
 
