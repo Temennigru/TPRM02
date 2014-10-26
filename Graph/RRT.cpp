@@ -11,8 +11,8 @@
 #include <cmath>
 
 
-#define MAX_DIST 4.0f
-#define SQ_MAX_DIST 16.0f
+#define MAX_DIST 2.0f
+#define SQ_MAX_DIST 4.0f
 
 
 // Adds a node to the graph, computing it's visibility towards all other nodes already in the graph
@@ -38,24 +38,23 @@ bool RRT_t::addNode(graph2D::node_t * &dst){
 
     // Fix distance
     if (min_dist > SQ_MAX_DIST) {
-        printf("%f %f -> %f %f", node->x, node->y, closest_node->x, closest_node->y);
+        //printf("%f %f -> %f %f", node->x, node->y, closest_node->x, closest_node->y);
 		node->x = (graph2D::nodeValue_t)( ( (node->x - closest_node->x) / sqrt(graph2D::sqdistance(node, closest_node))) * MAX_DIST) + closest_node->x;
         node->y = (graph2D::nodeValue_t)( ( (node->y - closest_node->y) / sqrt(graph2D::sqdistance(node, closest_node))) * MAX_DIST) + closest_node->y;
         //printf(" (%f %f)\n", node->x, node->y);
-		assert(node->x >= 0.0 && node->y >= 0.0 && "Generated point must be within positive bounds!");
     }
+
+	assert(node->x >= 0.0 && node->y >= 0.0 && "Generated point must be within positive bounds!");
 
     // If the node is visible, add it as a connecting node
     if (restrictions->isUnobstructed(closest_node->x, closest_node->y, node->x, node->y)) {
 		graph2D::addEdge(closest_node, node);
         G.push_back(node);
-		return false;
-	// Otherwise, if the intersecting node is an unknown point, then use it as a destination
-    } else if (restrictions->intersectsUnknown(closest_node->x, closest_node->y, node->x, node->y)){
-		graph2D::addEdge(closest_node, node);
-        G.push_back(node);
-		dst = node;
-		return true;
+		// Otherwise, if the intersecting node is an unknown point, then use it as a destination
+		if (restrictions->closeToUnknown(node->x, node->y, MAX_DIST*3)) {
+			dst = node;
+			return true;
+		} else { return false; }
 	// If neither is the case, the intersect is with a wall, so don't add the edge
 	} else{
 		delete node;

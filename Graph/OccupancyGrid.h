@@ -16,7 +16,7 @@ class OccupancyGrid_t{
 	size_t h;
 	size_t scale;
 
-	#define PADDING 0.9
+	#define PADDING 0.8
 	float padding;
 	bool isOpaque(float x, float y){
 		float occupancyProb = getOccupancyProbability(x, y);
@@ -28,7 +28,7 @@ class OccupancyGrid_t{
 public:
 
 	// Constructor/Destructor
-	OccupancyGrid_t(const size_t w, const size_t h, const size_t scale = 5, const float occupancyThreshold = 0.05) : w(w), h(h), scale(scale), padding(PADDING) {
+	OccupancyGrid_t(const size_t w, const size_t h, const size_t scale = 2, const float occupancyThreshold = 0.05) : w(w), h(h), scale(scale), padding(PADDING) {
 		
 		// Ensure the occupancy threshold is within acceptable values
 		assert(occupancyThreshold > 0 && occupancyThreshold <= 1 && "Occupancy must be greater than 0, and less or equal to 1!");
@@ -40,6 +40,10 @@ public:
 		for(size_t i = 0; i < h*scale; i++){
 			hits[i] = (size_t*)calloc(w*scale, sizeof(size_t));
 			misses[i] = (size_t*)calloc(w*scale, sizeof(size_t));
+			for (size_t j = 0; j < w*scale; j++) {
+				hits[i][j] = 0;
+				misses[i][j] = 0;
+			}
 		}		
 	}
 	~OccupancyGrid_t(void){
@@ -63,7 +67,9 @@ public:
 
 	// Returns true if there are no obstacles between the source and the destination
 	bool isUnobstructed(float srcX, float srcY, float dstX, float dstY){
-		
+
+		if (srcX < 0.0 && srcY < 0.0 && dstX < 0.0 && dstY < 0.0) { return false; }
+
 		const float dist = sqrt((dstX - srcX)*(dstX - srcX) + (dstY - srcY)*(dstY - srcY));
 		const float dx = 2*padding*(dstX - srcX)/dist;
 		const float dy = 2*padding*(dstY - srcY)/dist;
@@ -106,6 +112,7 @@ public:
 
 	// Returns true if the first obstacle between the source and the destination is an unknown cell
 	bool intersectsUnknown(float srcX, float srcY, float dstX, float dstY){
+		if (srcX < 0.0 && srcY < 0.0 && dstX < 0.0 && dstY < 0.0) { return false; }
 		const float dist = sqrt((dstX - srcX)*(dstX - srcX) + (dstY - srcY)*(dstY - srcY));
 		const float dx = /*2*padding*/0.3*(dstX - srcX)/dist;
 		const float dy = /*2*padding*/0.3*(dstY - srcY)/dist;
@@ -121,13 +128,52 @@ public:
 		return false;
 	}
 
+	// Use square spiral to search for unknown visible cells close to a given point
+	bool closeToUnknown(float srcX, float srcY, float radius) {
+		int nmov1 = 0, nmov2 = 1, nmov3 = 0;
+		size_t x = srcX*scale;
+		size_t y = srcY*scale;
+		int mov = 0;
+		bool outOfBounds = false;
+		while (true) {
+
+			if ((srcX - ((float)x)/scale)*(srcX - ((float)x)/scale) + (srcY - ((float)y)/scale)*(srcY - ((float)y)/scale) <= radius) { // If not out of radius
+				if (hits[(size_t) y][(size_t) x] == 0 && misses[(size_t) y][(size_t) x] == 0) { // Unknown
+					if (isUnobstructed(srcX, srcY, ((float)x)/scale, ((float)y)/scale)) { return true; }
+				}
+				outOfBounds = false;
+			}
+
+			if (mov == 0) y ++; //definicao de cada movimento
+			if (mov == 1) x --;
+			if (mov == 2) y --;
+			if (mov == 3) x++;
+			nmov1 ++;
+			if (nmov3 == 2) { //se 2 se a direcao mudou 2 vezes nmov2 ++ e nmov3 reseta
+				nmov2 ++;
+				nmov3 = 0;
+			}
+			if (nmov1 == nmov2) { //se o numero de movimentos necessarios for feito nmov1 reseta, a direcao muda e nmov3 ++
+				if (mov != 3) mov++;
+				else {
+					mov = 0; //se mov = 3 mov reseta
+					if (outOfBounds) { return false; }
+					outOfBounds = true;
+				}
+				nmov1 = 0;
+				nmov3 ++;
+			}
+		}
+	}
+
+
 	// Returns true if the referenced position is known to be unocupied within a certain padding
 	bool isUnocupied(float x, float y){
 		for(float px = std::max<float>(x - padding, 0.0); px < std::min<float>(x + padding, w); px += 1.0/scale){
 			for(float py = std::max<float>(y - padding, 0.0); py < std::min<float>(y + padding, h); py += 1.0/scale){
 				if(sqrt((px - x)*(px - x) + (py - y)*(py - y)) > padding) continue;
-				assert(px >= 0 && py >= 0 && "Generated values must be positive!");				
-				if(isOpaque(px, py)) return false;			
+				assert(px >= 0 && py >= 0 && "Generated values must be positive!");
+				if(isOpaque(px, py)) return false;
 			}
 		}
 		return true;
@@ -150,14 +196,15 @@ public:
 	// Exports the visibility to a PGM
 	void exportPGM(const char * FName, bool includePadding = false){
 		uint16_t ** pixels = (uint16_t**) malloc(h*scale*sizeof(uint16_t*));
-		for(size_t i = 0; i < h*scale; i++) pixels[i] = (uint16_t*)malloc(w*scale*sizeof(uint16_t));	
+		for(size_t i = 0; i < h*scale; i++) pixels[i] = (uint16_t*)malloc(w*scale*sizeof(uint16_t));
 		for(size_t y = 0; y < h*scale; y++){
 			for(size_t x = 0; x < w*scale; x++){
-				if(includePadding) pixels[y][x] = isUnocupied((float)x/scale, (float)y/scale);
-				else pixels[y][x] = isOpaque((float)x/scale, (float)y/scale);
-				printf("%i", pixels[y][x]);		
+				if(includePadding) pixels[y][x] = 2 * isUnocupied((float)x/scale, (float)y/scale);
+				else pixels[y][x] = 2 * isOpaque((float)x/scale, (float)y/scale);
+				if (getOccupancyProbability((float)x/scale, (float)y/scale) == -1.0) pixels[y][x] = 1;
+				//printf("%i", pixels[y][x]);
 			}
-			printf("\n");
+			//printf("\n");
 		}
 		
 		FILE * test = fopen("/home/viki/catkin_ws/src/tp2/test.txt", "wt");
@@ -178,7 +225,7 @@ public:
 			}
 			printf("\n");		
 		}*/
-		makePGM(FName, pixels, 1, w*scale, h*scale);
+		makePGM(FName, pixels, 2, w*scale, h*scale);
 		for(size_t i = 0; i < h*scale; i++) free(pixels[i]);
 		free(pixels);
 	}
