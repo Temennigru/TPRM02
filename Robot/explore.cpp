@@ -27,7 +27,9 @@ const float rayInc = 0.2;
 void laserCallback(const sensor_msgs::LaserScan &msg){	
 	
 	// If the robot is moving, do not trust its laser
-	if(!isStopped) return;	
+	if(!isStopped) return;
+
+	printf("WHOOP\n");
 
 	// Iterate over each ray, and increment hit/miss grid allong its path 	
 	size_t idx = 0;
@@ -36,12 +38,12 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 		float laserDist = msg.ranges[idx];
 		if(laserDist <= msg.range_min){
 			idx++;
-			continue;		
+			continue;
 		}	
 
 		// Compute the target x and y
 		float dstX, dstY;
-		if(laserDist >= msg.range_max) dstX = dstY = FLT_MAX;
+		if(laserDist >= 3.0*msg.range_max/6.0) dstX = dstY = FLT_MAX;
 		else{
 			dstX = px + msg.ranges[idx]*cos(phi);
 			dstY = py + msg.ranges[idx]*sin(phi);
@@ -54,8 +56,9 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 			float y = py + r*sin(phi);
 			bool occupied = pow(x - dstX, 2) + pow(y - dstY, 2) < 0.05*0.05;
 			//sprintf("theta = %f ; phi %f ; r = %f ; %f %f (%f %f) %i\n", theta, phi, laserDist, x, y, dstX, dstY, occupied);
-			grid->informOccupancy(x, y, occupied); 		
-		}		
+			grid->informOccupancy(x, y, occupied);
+		}
+		grid->informOccupancy(dstX, dstY, dstX != FLT_MAX);
 		idx++;
 	}
 }
@@ -63,22 +66,20 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 
 // Rotate in position until all points in a radius are either scanned or unknown
 void stopAndScan(OccupancyGrid_t * grid, ros::Publisher * cmdvelPub){
+	printf ("Entrei\n");
+
 	ros::Rate loop_rate(10);
-	const float rotateAngle = M_PI;
-	const float scanDist = 3;
+	const float rotateAngle = M_PI/5;
+	const float scanDist = 2;
 	const float scanAngle = M_PI/180;
 	float goalTheta = theta + ((theta < 0) ? M_PI : -M_PI);
-		
+
 	while(ros::ok()){
 
 		// Check if we are done scanning
 		//printf("%s %i\n", __FILE__, __LINE__);
-		bool doneScanning = true;
-		for(float a = 0; a < 2*M_PI && doneScanning; a += scanAngle){
-			float dstX = std::max<float>(std::min<float>(scanDist*cos(a), 25), 0);	
-			float dstY = std::max<float>(std::min<float>(scanDist*sin(a), 25), 0);	
-			doneScanning = !grid->intersectsUnknown(px, py, dstX, dstY);
-		}			
+		bool doneScanning = !grid->closeToUnknown(px, py, scanDist);
+		printf("px: %f py: %f scanDist: %f\n", px, py, scanDist);
 		//printf("%s %i\n", __FILE__, __LINE__);
 		if(doneScanning) {
 			//printf("doneScanning\n");
@@ -88,25 +89,29 @@ void stopAndScan(OccupancyGrid_t * grid, ros::Publisher * cmdvelPub){
 		// If not, rotate by rotateAngle
 		const float epsilon = 5*M_PI/180;
 		float goalTheta = theta + rotateAngle;
-		if(goalTheta > M_PI) goalTheta -= 2*M_PI;			
-		while(fabs(goalTheta - theta) > epsilon){
+		if(goalTheta > M_PI) goalTheta -= 2*M_PI;
+		while(fabs(goalTheta - theta) >= epsilon){
 			geometry_msgs::Twist cmdvel;
 			cmdvel.angular.z = 1;
 			cmdvelPub->publish(cmdvel);
 			ros::spinOnce();
 			loop_rate.sleep();
+			printf ("goal theta: %f theta: %f epsilon: %f\n", goalTheta, theta, epsilon);
 		}
 
 		// Wait a bit for the laser to scan the environment
+		geometry_msgs::Twist cmdvel;
+		cmdvelPub->publish(cmdvel);
+		loop_rate.sleep();
 		isStopped = true;
-		for(size_t i = 0; i < 100; i++){
-			geometry_msgs::Twist cmdvel;
-			cmdvelPub->publish(cmdvel);
-			ros::spinOnce();
-			loop_rate.sleep();
-		}
+		ros::spinOnce();
+		loop_rate.sleep();
 		isStopped = false;
+		printf ("dando loop\n");
+		grid->exportPGM("/home/viki/catkin_ws/src/tp2/initial.pgm", true);
 	}
+	printf ("sai\n");
+	grid->exportPGM("/home/viki/catkin_ws/src/tp2/initial.pgm", true);
 }
 
 void printFormatAndExit(void){
@@ -115,7 +120,7 @@ void printFormatAndExit(void){
 	exit(-1);
 }
 int main(int argc, char **argv){
-	//srand((int)time(NULL));
+	srand((int)time(NULL));
 	
 	// Sanitize inputs
 	//      Label inputs
@@ -135,10 +140,10 @@ int main(int argc, char **argv){
 	}
 	//      Decode initial position
 	originX = atof(argOriginX);
-	originY = atof(argOriginY);		
+	originY = atof(argOriginY);
 	//      Decode grid size
 	float maxX = atof(argMaxX);
-	float maxY = atof(argMaxY);		
+	float maxY = atof(argMaxY);
 	//       Sensitivity (how close to the target the robot must get before it is considered there)
 	double sensitivity = atof(argSensitivity);
 	//       Omni-Movement parameters
@@ -178,11 +183,11 @@ int main(int argc, char **argv){
 	//       Error computation	
 	float * pathx, * pathy, * pathTheta;
 	size_t pathi = 0, pathSize = 0;
-	float goalTheta;	
+	float goalTheta;
 	while (ros::ok()){
 
 		if (pathi != pathSize && !grid->isUnobstructed(px, py, pathx[pathi], pathy[pathi])){
-			pathi = pathSize;			
+			pathi = pathSize;
 		}	
 
 		//printf("path: %i(%i)\n", pathi, pathSize);
@@ -190,7 +195,7 @@ int main(int argc, char **argv){
 		// Check if the target of the current path has been reached, if so, make a new one
 		if(pathi == pathSize){
 
-			grid->exportPGM("/home/viki/catkin_ws/src/tp2/initial.pgm", true);		
+			grid->exportPGM("/home/viki/catkin_ws/src/tp2/initial.pgm", true);
 
 
 			// Scan arround the surroundings
@@ -202,19 +207,17 @@ int main(int argc, char **argv){
 				printf("Finished exploring (%f, %f)\n", pathx[pathSize - 1], pathy[pathSize - 1]);
 				free(pathx);
 				free(pathy);
-			}			
+			}
 
 			// Compute a new path to a cell that is reachable and unknown
 			RRT_t RRT(grid);
 			RRT.findPath(px, py, pathx, pathy, pathSize);
-			printf("Setting new path:\n");			
+			printf("Setting new path:\n");
 			for(size_t i = 0; i < pathSize; i++){
 				printf("%zu\t%f %f\n", i, pathx[i], pathy[i]);
-			}			
-			assert(pathSize > 0 && "Expected RRT path with at least a destination!");			
+			}
+			assert(pathSize > 0 && "Expected RRT path with at least a destination!");
 			pathi = 0;
-			pathSize--;			
-			
 
 			// Compute theta allong the trajectory
 			pathTheta = (float*)malloc(pathSize*sizeof(float));			
@@ -225,7 +228,7 @@ int main(int argc, char **argv){
 			// Status message informing the start of a new exploration
 			printf("Started exploring (%f, %f)\n", pathx[pathSize], pathy[pathSize]);
 			
-		} else{		
+		} else {
 
 			// Compute proportional error
 			float ex = pathx[pathi] - px;
@@ -238,20 +241,26 @@ int main(int argc, char **argv){
 				printf("Reached goal (%f, %f)\n", pathx[pathi], pathy[pathi]);
 
 				// Wait for the robot to catch up with where we are going
-				geometry_msgs::Twist cmdvel;
+				/*geometry_msgs::Twist cmdvel;
 				cmdvel.linear.x = 0;
 				cmdvel.linear.y = 0;
 				cmdvel.angular.z = 0.02;//P*etheta;
 				while(fabs(theta - pathTheta[pathi]) < 0.01){
-					cmdVelPub.publish(cmdvel);					
+					cmdVelPub.publish(cmdvel);
 					ros::spinOnce();
 					loop_rate.sleep();
+				}*/
+				stopAndScan(grid, &cmdVelPub);
+				if (!grid->isUnocupied(px, py)) { // Is in wall
+					printf("Stuck in wall\n");
+					pathi--;
+				} else {
+					// Load next destination, unless we discovered an obstruction
+					pathi++;
 				}
+				grid->exportPGM("/home/viki/catkin_ws/src/tp2/initial.pgm", true);
 				
-				// Load next destination, unless we discovered an obstruction				
-				pathi++;				
-				
-			// Otherwise, update velocities		
+			// Otherwise, update velocities
 			} else {
 
 				// Computes the new (x,y) velocities in universal coordinates
