@@ -62,18 +62,13 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 
 void printFormatAndExit(void){
 	printf("Format:\n"); 
-	printf("\trosrun tp1 control [origin x] [origin y] [max x] [max y] [Sensitivity] [RRT-dist]\n");
+	printf("\trosrun tp2 explore [origin x] [origin y] [max x] [max y] [Sensitivity]\n");
 	exit(-1);
 }
 int main(int argc, char **argv){
-	//srand((int)time(NULL));
-
 
 	//      Verify arg-count
 	if(argc <= 1) printFormatAndExit();
-
-	int offset;
-
 	const size_t expectedParams = 5;
 	if(argc != expectedParams + 1) {
 		fprintf(stderr, "ERROR: Expected %zu params, got %i.\n", expectedParams, argc - 1);
@@ -86,7 +81,6 @@ int main(int argc, char **argv){
 	const char * argMaxX = argv[3];
 	const char * argMaxY = argv[4];
 	const char * argSensitivity = argv[5];
-
 	//      Decode initial position
 	originX = atof(argOriginX);
 	originY = atof(argOriginY);		
@@ -129,7 +123,7 @@ int main(int argc, char **argv){
 	// Inform the cell grid that the current cell is unnocupied (since the robot is in it)
 	cellGrid->informMiss(px, py);
 
-
+	//size_t pgmIdx = 0;
 	while(ros::ok()){
 	
 		// If we've reached the end of our path, compute a new one
@@ -152,6 +146,9 @@ int main(int argc, char **argv){
 				loop_rate.sleep();
 			}
 			isStopped = false;
+			//char FName[64];
+			//sprintf(FName, "/home/viki/catkin_ws/src/tp2/pgm/pgm%03i.pgm", pgmIdx++);
+			//cellGrid->printPGM(FName);
 			
 			// Load new path
 			if (pathX != NULL) free(pathX);
@@ -196,8 +193,9 @@ int main(int argc, char **argv){
 			cmdvel.angular.z = goalTheta - theta;			
 			cmdVelPub.publish(cmdvel);
 
-			cellGrid->printStates();
-			printf("x = %f (%f), y = %f (%f), theta = %f (%f)\n", px, goalX, py, goalY, theta, goalTheta);
+			// [DEBUG] Print out current state			
+			//cellGrid->printStates();
+			//printf("x = %f (%f), y = %f (%f), theta = %f (%f)\n", px, goalX, py, goalY, theta, goalTheta);
 		}
 
 		// Sleep a bit

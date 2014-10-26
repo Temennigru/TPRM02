@@ -241,7 +241,7 @@ public:
 			for(size_t x = 0; x < cellGrid.getWidth(); x++){
 				float occupancyProb = getOccupancyProbability(x, y);;
 				if(occupancyProb == -1) pixels[y][x] = 0.5*pixelMax;
-				else pixels[y][x] = occupancyProb*pixelMax; 		
+				else pixels[y][x] = (1 - occupancyProb)*pixelMax; 		
 			}		
 		}
 
