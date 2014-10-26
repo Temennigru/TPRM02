@@ -1,6 +1,7 @@
 #ifndef _OCCUPANCYGRID_H
 #define _OCCUPANCYGRID_H
 
+#include "PGM.h"
 #include <cstdlib>
 #include <assert.h>
 #include <map>
@@ -200,15 +201,6 @@ public:
 	}
 
 	// Interface for scan event reporting
-	/*
-		void informHit(float srcX, float srcY, float dstX, float dstT){
-			informEvent(srcX, srcY, dstX, dstY, true);
-		}
-		void informMiss(float srcX, float srcY, float dstX, float dstT){
-			informEvent(srcX, srcY, dstX, dstY, false);
-		}
-		void informRay(
-	*/
 	void informHit(float x, float y){
 		informEvent(x, y, true);
 	}
@@ -240,6 +232,24 @@ public:
 
 	void printStates(void){
 		cellGrid.print();
+	}
+	void printPGM(const char * FName){
+		uint16_t ** pixels = (uint16_t**)malloc(cellGrid.getHeight()*sizeof(uint16_t*));		
+		const uint16_t pixelMax = 1024;		
+		for(size_t y = 0; y < cellGrid.getHeight(); y++){
+			pixels[y] = (uint16_t*)malloc(cellGrid.getWidth()*sizeof(uint16_t));
+			for(size_t x = 0; x < cellGrid.getWidth(); x++){
+				float occupancyProb = getOccupancyProbability(x, y);;
+				if(occupancyProb == -1) pixels[y][x] = 0.5*pixelMax;
+				else pixels[y][x] = occupancyProb*pixelMax; 		
+			}		
+		}
+
+		makePGM(FName, pixels, pixelMax, cellGrid.getWidth(), cellGrid.getHeight());
+
+		for(size_t y = 0; y < cellGrid.getHeight(); y++) free(pixels[y]);
+		free(pixels);
+		
 	}
 };
 
