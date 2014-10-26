@@ -62,12 +62,23 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 
 void printFormatAndExit(void){
 	printf("Format:\n"); 
-	printf("\trosrun tp1 control [origin x] [origin y] [max x] [max y] [Sensitivity] [Drive-P] [RRT-dist]\n");
+	printf("\trosrun tp1 control [origin x] [origin y] [max x] [max y] [Sensitivity] [RRT-dist]\n");
 	exit(-1);
 }
 int main(int argc, char **argv){
 	//srand((int)time(NULL));
-	
+
+
+	//      Verify arg-count
+	if(argc <= 1) printFormatAndExit();
+
+	int offset;
+
+	const size_t expectedParams = 5;
+	if(argc != expectedParams + 1) {
+		fprintf(stderr, "ERROR: Expected %zu params, got %i.\n", expectedParams, argc - 1);
+		printFormatAndExit();
+	}
 	// Sanitize inputs
 	//      Label inputs
 	const char * argOriginX = argv[1];
@@ -75,15 +86,7 @@ int main(int argc, char **argv){
 	const char * argMaxX = argv[3];
 	const char * argMaxY = argv[4];
 	const char * argSensitivity = argv[5];
-	const char * argP = argv[6];
-	const char * argD = argv[7];
-	//      Verify arg-count
-	const size_t expectedParams = 7;	
-	if(argc <= 1) printFormatAndExit();
-	if(argc != expectedParams + 1) {
-		fprintf(stderr, "ERROR: Expected %zu params, got %i.\n", expectedParams, argc - 1);
-		printFormatAndExit();
-	}
+
 	//      Decode initial position
 	originX = atof(argOriginX);
 	originY = atof(argOriginY);		
@@ -92,8 +95,6 @@ int main(int argc, char **argv){
 	float maxY = atof(argMaxY);		
 	//       Sensitivity (how close to the target the robot must get before it is considered there)
 	double sensitivity = atof(argSensitivity);
-	//       Omni-Movement parameters
-	double P = atof(argP);
 	
 	// Initialize ros
 	ros::init(argc, argv, "omniBot");
