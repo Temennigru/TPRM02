@@ -3,8 +3,7 @@
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/LaserScan.h>
 #include <cmath>
-#include "../Graph/OccupancyGrid.h"
-#include "../Graph/RRT.h"
+#include "../Graph/CellGrid.h"
 #include <list>
 #include <float.h>
 
@@ -20,14 +19,12 @@ void odomCallback(const nav_msgs::Odometry &msg){
 	theta = asin(msg.pose.pose.orientation.z)*2;
 }
 
-// Occupancy Grid Update
-bool isStopped = false;
-OccupancyGrid_t * grid;
+// Laser callback (grid update)
+probabilisticCellGrid_t * cellGrid;
 const float rayInc = 0.2;
+bool isStopped = false;
 void laserCallback(const sensor_msgs::LaserScan &msg){	
-	
-	// If the robot is moving, do not trust its laser
-	if(!isStopped) return;	
+	if(!isStopped) return;
 
 	// Iterate over each ray, and increment hit/miss grid allong its path 	
 	size_t idx = 0;
@@ -47,67 +44,21 @@ void laserCallback(const sensor_msgs::LaserScan &msg){
 			dstY = py + msg.ranges[idx]*sin(phi);
 		}
 
-		/* Runs through all points allong the ray; 
+		/* Runs through all points along the ray; 
 		   Points are incremented roughly proportionally to the size of the intersect between the ray and the cell */
 		for(float r = 0; r < laserDist; r += rayInc){
 			float x = px + r*cos(phi);
 			float y = py + r*sin(phi);
 			bool occupied = pow(x - dstX, 2) + pow(y - dstY, 2) < 0.05*0.05;
 			//sprintf("theta = %f ; phi %f ; r = %f ; %f %f (%f %f) %i\n", theta, phi, laserDist, x, y, dstX, dstY, occupied);
-			grid->informOccupancy(x, y, occupied); 		
+			if(occupied) cellGrid->informHit(x, y);
+			else cellGrid->informMiss(x, y);
 		}		
+		cellGrid->informHit(dstX, dstY);
 		idx++;
 	}
 }
 
-
-// Rotate in position until all points in a radius are either scanned or unknown
-void stopAndScan(OccupancyGrid_t * grid, ros::Publisher * cmdvelPub){
-	ros::Rate loop_rate(10);
-	const float rotateAngle = M_PI;
-	const float scanDist = 3;
-	const float scanAngle = M_PI/180;
-	float goalTheta = theta + ((theta < 0) ? M_PI : -M_PI);
-		
-	while(ros::ok()){
-
-		// Check if we are done scanning
-		//printf("%s %i\n", __FILE__, __LINE__);
-		bool doneScanning = true;
-		for(float a = 0; a < 2*M_PI && doneScanning; a += scanAngle){
-			float dstX = std::max<float>(std::min<float>(scanDist*cos(a), 25), 0);	
-			float dstY = std::max<float>(std::min<float>(scanDist*sin(a), 25), 0);	
-			doneScanning = !grid->intersectsUnknown(px, py, dstX, dstY);
-		}			
-		//printf("%s %i\n", __FILE__, __LINE__);
-		if(doneScanning) {
-			//printf("doneScanning\n");
-			//getchar();
-			break;
-		}
-		// If not, rotate by rotateAngle
-		const float epsilon = 5*M_PI/180;
-		float goalTheta = theta + rotateAngle;
-		if(goalTheta > M_PI) goalTheta -= 2*M_PI;			
-		while(fabs(goalTheta - theta) > epsilon){
-			geometry_msgs::Twist cmdvel;
-			cmdvel.angular.z = 1;
-			cmdvelPub->publish(cmdvel);
-			ros::spinOnce();
-			loop_rate.sleep();
-		}
-
-		// Wait a bit for the laser to scan the environment
-		isStopped = true;
-		for(size_t i = 0; i < 100; i++){
-			geometry_msgs::Twist cmdvel;
-			cmdvelPub->publish(cmdvel);
-			ros::spinOnce();
-			loop_rate.sleep();
-		}
-		isStopped = false;
-	}
-}
 
 void printFormatAndExit(void){
 	printf("Format:\n"); 
@@ -149,9 +100,6 @@ int main(int argc, char **argv){
 	ros::NodeHandle n;
 	ros::Rate loop_rate(10);
 
-	// Create OccupancyGrid
-	grid = new OccupancyGrid_t(maxX, maxY);
-	
 	// Create stage velocity publisher, odometry listener, command listener and, if diffbot, laser listener
 	ros::Publisher cmdVelPub = n.advertise<geometry_msgs::Twist>("cmd_vel", 10); 
 	ros::Subscriber stageOdoSub = n.subscribe("odom", 10, &odomCallback);
@@ -167,113 +115,88 @@ int main(int argc, char **argv){
 	}	
 	printf("Got initial position (%lf, %lf, %lf)\n", px, py, theta);
 
-	// Do full circle in the vicinity of the robot in order to establish sorroundings
-	//printf("Doing a full circle to get initial bearings...\n");
+	// Create the probabilistic cell grid
+	const float scale = 1.0;	
+	cellGrid = new probabilisticCellGrid_t(maxX, maxY, scale);
 	
-	// Generate a print of the visual field
-	grid->exportPGM("/home/viki/catkin_ws/src/tp2/initial.pgm", true);
+	// Auxiliaries used in the pathing
+	float *pathX = NULL, *pathY = NULL;
+	size_t pathCnt = 1;
+	size_t pathi = 0;
+	float goalX = px, goalY = py, goalTheta = theta;
 
-	// Main scan-path-repeat loop		
-	printf("Starting search...\n");
-	//       Error computation	
-	float * pathx, * pathy, * pathTheta;
-	size_t pathi = 0, pathSize = 0;
-	float goalTheta;	
-	while (ros::ok()){
-
-		if (pathi != pathSize && !grid->isUnobstructed(px, py, pathx[pathi], pathy[pathi])){
-			pathi = pathSize;			
-		}	
-
-		//printf("path: %i(%i)\n", pathi, pathSize);
-
-		// Check if the target of the current path has been reached, if so, make a new one
-		if(pathi == pathSize){
-
-			grid->exportPGM("/home/viki/catkin_ws/src/tp2/initial.pgm", true);		
+	// Inform the cell grid that the current cell is unnocupied (since the robot is in it)
+	cellGrid->informMiss(px, py);
 
 
-			// Scan arround the surroundings
-			stopAndScan(grid, &cmdVelPub);
+	while(ros::ok()){
 	
+		// If we've reached the end of our path, compute a new one
+		if (pathi + 1 >= pathCnt){
 
-			// Status message informing the end of the current exploration
-			if(pathSize != 0){
-				printf("Finished exploring (%f, %f)\n", pathx[pathSize - 1], pathy[pathSize - 1]);
-				free(pathx);
-				free(pathy);
-			}			
-
-			// Compute a new path to a cell that is reachable and unknown
-			RRT_t RRT(grid);
-			RRT.findPath(px, py, pathx, pathy, pathSize);
-			printf("Setting new path:\n");			
-			for(size_t i = 0; i < pathSize; i++){
-				printf("%zu\t%f %f\n", i, pathx[i], pathy[i]);
-			}			
-			assert(pathSize > 0 && "Expected RRT path with at least a destination!");			
-			pathi = 0;
-			pathSize--;			
-			
-
-			// Compute theta allong the trajectory
-			pathTheta = (float*)malloc(pathSize*sizeof(float));			
-			for(size_t i = 0; i < pathSize; i++){
-				pathTheta[i] = atan(((float)pathy[i+1] - (float)pathy[i])/((float)pathx[i+1] - (float)pathx[i]));
-			}
-			
-			// Status message informing the start of a new exploration
-			printf("Started exploring (%f, %f)\n", pathx[pathSize], pathy[pathSize]);
-			
-		} else{		
-
-			// Compute proportional error
-			float ex = pathx[pathi] - px;
-			float ey = pathy[pathi] - py;
-			float etheta = goalTheta - theta;
-			
-			// Check if the new error is within acceptible bounds, if so, load the next goal
-			if(ex*ex + ey*ey < sensitivity*sensitivity /*&& (pathi != pathSize - 1 || fabs(etheta) < 45*M_PI/180)*/){
-
-				printf("Reached goal (%f, %f)\n", pathx[pathi], pathy[pathi]);
-
-				// Wait for the robot to catch up with where we are going
+			// Ensure we're pointed the right way
+			const float epsilon = 5*M_PI/180;
+			while(fabs(goalTheta - theta) > epsilon){
 				geometry_msgs::Twist cmdvel;
-				cmdvel.linear.x = 0;
-				cmdvel.linear.y = 0;
-				cmdvel.angular.z = 0.02;//P*etheta;
-				while(fabs(theta - pathTheta[pathi]) < 0.01){
-					cmdVelPub.publish(cmdvel);					
-					ros::spinOnce();
-					loop_rate.sleep();
-				}
-				
-				// Load next destination, unless we discovered an obstruction				
-				pathi++;				
-				
-			// Otherwise, update velocities		
-			} else {
-
-				// Computes the new (x,y) velocities in universal coordinates
-				double universal_velX = P*ex;
-				double universal_velY = P*ey;
-
-				// Computes the velocity adjusted for theta
-				double local_velX = universal_velX*cos(theta) + universal_velY*sin(theta);
-				double local_velY = -universal_velX*sin(theta) + universal_velY*cos(theta);			
-
-				// Generate message for stage and publish it
-				geometry_msgs::Twist cmdvel;
-				cmdvel.linear.x = local_velX;
-				cmdvel.linear.y = local_velY;
-				//cmdvel.angular.z = P*etheta;
-				
-				//printf("theta: %lf; goalTheta: %lf; etheta: %lf\n", theta, goalTheta, etheta);
-				printf("x: %lf(%lf), y: %lf(%lf), theta: %lf(%f)\n", px, (double)pathx[pathi], py, (double)pathy[pathi], theta, goalTheta);
-
-				// Publish new velocity to stage control
+				cmdvel.angular.z = (goalTheta > theta) - (goalTheta < theta);			
 				cmdVelPub.publish(cmdvel);
+				ros::spinOnce();
+				loop_rate.sleep();
 			}
+
+			// Accept lasers output
+			isStopped = true;
+			for(size_t repetitions = 0; repetitions < 10; repetitions++){
+				ros::spinOnce();
+				loop_rate.sleep();
+			}
+			isStopped = false;
+			
+			// Load new path
+			if (pathX != NULL) free(pathX);
+			if (pathY != NULL) free(pathY);
+			cellGrid->getPathToClosestUnknownCell(px, py, pathX, pathY, pathCnt);
+			pathi = 0;
+
+			// If the path has 0 elements, then we are done exploring
+			if (pathCnt == 0){
+				printf("Done exploring!\n");
+				break;
+			}
+			assert(pathCnt > 1 && "The current position of the robot is assumed to be known!");
+
+			// Remove the last element so the robot pauses before the last element, in case it's a trap
+			pathCnt = std::max<size_t>(2, pathCnt - 1);
+
+
+			// Compute theta so the robot is looking towards the desired cell at the end
+			if (pathX[pathCnt - 1] > pathX[pathCnt - 2]) goalTheta = 0;
+			else if (pathX[pathCnt - 1] < pathX[pathCnt - 2]) goalTheta = -M_PI;
+			else if (pathY[pathCnt - 1] > pathY[pathCnt - 2]) goalTheta = M_PI / 2;
+			else if (pathY[pathCnt - 1] < pathY[pathCnt - 2]) goalTheta = -M_PI / 2;
+		}
+
+		float ex = pathX[pathi] - px;
+		float ey = pathY[pathi] - py;
+		float etheta = goalTheta - theta;
+
+		// If we've reached the goal of the current segment, then go to the next segment
+		if (pow(ex, 2) + pow(ey, 2) < pow(sensitivity, 2)){
+			printf("Reached goal (%f, %f)\n", pathX[pathi], pathY[pathi]);
+			pathi++;
+		// Otherwise, just apply velocity
+		} else {
+
+			geometry_msgs::Twist cmdvel;
+			float velx = pathX[pathi] - px;
+			float vely = pathY[pathi] - py;
+			cmdvel.linear.x =  velx*cos(theta) + vely*sin(theta);
+			cmdvel.linear.y = -velx*sin(theta) + vely*cos(theta);
+			cmdvel.angular.z = goalTheta - theta;			
+			cmdVelPub.publish(cmdvel);
+
+			cellGrid->printStates();
+			printf("x = %f (%f), y = %f (%f), theta = %f (%f)\n", px, goalX, py, goalY, theta, goalTheta);
 		}
 
 		// Sleep a bit
@@ -282,8 +205,11 @@ int main(int argc, char **argv){
 	}
 	
 	// Free resources and exit
-	delete grid;
+	delete cellGrid;
+	if (pathX != NULL) free(pathX);
+	if (pathY != NULL) free(pathY);			
 	printf("Exitting...\n");
 	return 0;
 }
+
 

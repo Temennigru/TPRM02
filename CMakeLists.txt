@@ -18,6 +18,6 @@ catkin_package(CATKIN_DEPENDS message_runtime)
 
 include_directories(include ${catkin_INCLUDE_DIRS})
 
-add_executable(explore Robot/explore.cpp Graph/RRT.cpp Graph/Graph2D.cpp Graph/PGM.cpp)
+add_executable(explore Robot/explore.cpp Graph/PGM.cpp)
 add_dependencies(explore tp2_explore)
 target_link_libraries(explore ${catkin_LIBRARIES})
